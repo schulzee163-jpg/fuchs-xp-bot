@@ -1,3 +1,4 @@
+
 import http from "http";
 import WebSocket from "ws";
 
@@ -31,43 +32,65 @@ server.listen(PORT, () => {
 });
 
 async function aktivitaetSpeichern(username) {
-  const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/fuchs_aktivitaet?on_conflict=spieler`,
-    {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=minimal",
-      },
-      body: JSON.stringify({
-        spieler: username,
-        letzte_aktivitaet: new Date().toISOString(),
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    console.error(
-      "Fehler beim Speichern:",
-      response.status,
-      await response.text()
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/fuchs_aktivitaet?on_conflict=spieler`,
+      {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify({
+          spieler: username,
+          letzte_aktivitaet: new Date().toISOString(),
+        }),
+      }
     );
+
+    if (!response.ok) {
+      console.error(
+        "Fehler beim Speichern:",
+        response.status,
+        await response.text()
+      );
+    } else {
+      console.log(`💾 Aktivität gespeichert: ${username}`);
+    }
+  } catch (error) {
+    console.error("Fehler bei Supabase:", error);
   }
 }
 
 function chatVerarbeiten(message) {
-  if (
-    message.type !== "message" ||
-    message.topic !== "channel.chat.message"
-  ) {
+  if (message.type === "response") {
+    console.log(
+      "📡 StreamElements Antwort:",
+      JSON.stringify(message)
+    );
+    return;
+  }
+
+  if (message.type !== "message") {
+    return;
+  }
+
+  console.log(
+    "📨 StreamElements Nachricht:",
+    JSON.stringify(message)
+  );
+
+  if (message.topic !== "channel.chat.message") {
     return;
   }
 
   const data = message.data;
 
   const username =
+    data?.chatter_user_name ||
+    data?.chatter_user_login ||
     data?.sender?.user_name ||
     data?.sender?.username ||
     data?.username ||
@@ -76,11 +99,17 @@ function chatVerarbeiten(message) {
   if (username) {
     console.log(`💬 Aktivität: ${username}`);
     aktivitaetSpeichern(username);
+  } else {
+    console.log(
+      "⚠️ Chat-Nachricht ohne erkannten Benutzernamen."
+    );
   }
 }
 
 function verbinden() {
-  const ws = new WebSocket("wss://astro.streamelements.com/");
+  const ws = new WebSocket(
+    "wss://astro.streamelements.com/"
+  );
 
   ws.on("open", () => {
     console.log("🦊 Mit StreamElements verbunden.");
@@ -91,6 +120,8 @@ function verbinden() {
       const message = JSON.parse(raw.toString());
 
       if (message.type === "welcome") {
+        console.log("👋 StreamElements Welcome erhalten.");
+
         ws.send(
           JSON.stringify({
             type: "subscribe",
@@ -103,7 +134,9 @@ function verbinden() {
           })
         );
 
-        console.log("🦊 Chat-Überwachung aktiviert.");
+        console.log(
+          "🦊 Chat-Überwachung wird aktiviert..."
+        );
       }
 
       chatVerarbeiten(message);
@@ -113,12 +146,18 @@ function verbinden() {
   });
 
   ws.on("close", () => {
-    console.log("⚠️ StreamElements-Verbindung beendet.");
+    console.log(
+      "⚠️ StreamElements-Verbindung beendet."
+    );
+
     setTimeout(verbinden, 5000);
   });
 
   ws.on("error", (error) => {
-    console.error("WebSocket-Fehler:", error.message);
+    console.error(
+      "WebSocket-Fehler:",
+      error.message
+    );
   });
 }
 
