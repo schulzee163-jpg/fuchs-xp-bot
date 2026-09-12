@@ -117,7 +117,7 @@ function verbinden() {
 
   ws.on("message", (raw) => {
     try {
-      const message = JSON.parse(raw.toString());
+      console.log("📡 StreamElements Nachricht:", JSON.stringify(message));
 
       if (message.type === "welcome") {
         console.log("👋 StreamElements Welcome erhalten.");
