@@ -1,4 +1,3 @@
-
 import http from "http";
 import WebSocket from "ws";
 
@@ -44,7 +43,7 @@ async function aktivitaetSpeichern(username) {
           Prefer: "resolution=merge-duplicates,return=minimal",
         },
         body: JSON.stringify({
-          spieler: username,
+          spieler: username.trim().toLowerCase(),
           letzte_aktivitaet: new Date().toISOString(),
         }),
       }
@@ -52,22 +51,28 @@ async function aktivitaetSpeichern(username) {
 
     if (!response.ok) {
       console.error(
-        "Fehler beim Speichern:",
+        "❌ Fehler beim Speichern:",
         response.status,
         await response.text()
       );
-    } else {
-      console.log(`💾 Aktivität gespeichert: ${username}`);
+      return;
     }
+
+    console.log(`💾 Aktivität gespeichert: ${username}`);
   } catch (error) {
-    console.error("Fehler bei Supabase:", error);
+    console.error("❌ Supabase-Fehler:", error);
   }
 }
 
 function chatVerarbeiten(message) {
+  console.log(
+    "📡 StreamElements Nachricht:",
+    JSON.stringify(message)
+  );
+
   if (message.type === "response") {
     console.log(
-      "📡 StreamElements Antwort:",
+      "📨 StreamElements Antwort:",
       JSON.stringify(message)
     );
     return;
@@ -77,18 +82,13 @@ function chatVerarbeiten(message) {
     return;
   }
 
-  console.log(
-    "📨 StreamElements Nachricht:",
-    JSON.stringify(message)
-  );
-
   if (message.topic !== "channel.chat.message") {
     return;
   }
 
   const data = message.data;
 
-  const username =
+  const usernameRaw =
     data?.chatter_user_name ||
     data?.chatter_user_login ||
     data?.sender?.user_name ||
@@ -96,8 +96,11 @@ function chatVerarbeiten(message) {
     data?.username ||
     data?.user?.name;
 
-  if (username) {
+  if (usernameRaw) {
+    const username = usernameRaw.trim().toLowerCase();
+
     console.log(`💬 Aktivität: ${username}`);
+
     aktivitaetSpeichern(username);
   } else {
     console.log(
@@ -107,9 +110,7 @@ function chatVerarbeiten(message) {
 }
 
 function verbinden() {
-  const ws = new WebSocket(
-    "wss://astro.streamelements.com/"
-  );
+  const ws = new WebSocket("wss://astro.streamelements.com/");
 
   ws.on("open", () => {
     console.log("🦊 Mit StreamElements verbunden.");
@@ -117,7 +118,10 @@ function verbinden() {
 
   ws.on("message", (raw) => {
     try {
-      console.log("📡 StreamElements Nachricht:", JSON.stringify(message));
+      const message = JSON.parse(raw.toString());
+
+      // Erst NACH dem Erstellen von "message" verwenden
+      chatVerarbeiten(message);
 
       if (message.type === "welcome") {
         console.log("👋 StreamElements Welcome erhalten.");
@@ -134,30 +138,20 @@ function verbinden() {
           })
         );
 
-        console.log(
-          "🦊 Chat-Überwachung wird aktiviert..."
-        );
+        console.log("🦊 Chat-Überwachung aktiviert.");
       }
-
-      chatVerarbeiten(message);
     } catch (error) {
-      console.error("Fehler:", error);
+      console.error("❌ Fehler beim Verarbeiten:", error);
     }
   });
 
   ws.on("close", () => {
-    console.log(
-      "⚠️ StreamElements-Verbindung beendet."
-    );
-
+    console.log("⚠️ StreamElements-Verbindung beendet.");
     setTimeout(verbinden, 5000);
   });
 
   ws.on("error", (error) => {
-    console.error(
-      "WebSocket-Fehler:",
-      error.message
-    );
+    console.error("❌ WebSocket-Fehler:", error.message);
   });
 }
 
