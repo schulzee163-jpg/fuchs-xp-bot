@@ -17,7 +17,11 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   process.exit(1);
 }
 
-// HTTP-Server für Render
+
+// ================================
+// HTTP-SERVER FÜR RENDER
+// ================================
+
 const server = http.createServer((req, res) => {
   res.writeHead(200, {
     "Content-Type": "text/plain; charset=utf-8",
@@ -30,20 +34,27 @@ server.listen(PORT, () => {
   console.log(`🦊 HTTP-Server läuft auf Port ${PORT}`);
 });
 
+
+// ================================
+// AKTIVITÄT IN SUPABASE SPEICHERN
+// ================================
+
 async function aktivitaetSpeichern(username) {
   try {
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/fuchs_aktivitaet?on_conflict=spieler`,
       {
         method: "POST",
+
         headers: {
           apikey: SUPABASE_SERVICE_ROLE_KEY,
           Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
           "Content-Type": "application/json",
           Prefer: "resolution=merge-duplicates,return=minimal",
         },
+
         body: JSON.stringify({
-          spieler: username.trim().toLowerCase(),
+          spieler: username,
           letzte_aktivitaet: new Date().toISOString(),
         }),
       }
@@ -51,42 +62,75 @@ async function aktivitaetSpeichern(username) {
 
     if (!response.ok) {
       console.error(
-        "❌ Fehler beim Speichern:",
+        "❌ Supabase-Fehler:",
         response.status,
         await response.text()
       );
+
       return;
     }
 
     console.log(`💾 Aktivität gespeichert: ${username}`);
+
   } catch (error) {
     console.error("❌ Supabase-Fehler:", error);
   }
 }
 
+
+// ================================
+// STREAM-ELEMENTS CHAT-NACHRICHT
+// ================================
+
 function chatVerarbeiten(message) {
+
+  // Alle Nachrichten zur Kontrolle ausgeben
   console.log(
     "📡 StreamElements Nachricht:",
     JSON.stringify(message)
   );
 
+
+  // Antworten von StreamElements
   if (message.type === "response") {
+
     console.log(
       "📨 StreamElements Antwort:",
       JSON.stringify(message)
     );
+
     return;
   }
 
+
+  // Nur echte Nachrichten weiterverarbeiten
   if (message.type !== "message") {
     return;
   }
 
+
+  // Nur Twitch-Chat-Nachrichten
   if (message.topic !== "channel.chat.message") {
     return;
   }
 
+
   const data = message.data;
+
+
+  // ================================
+  // NEU: CHAT-TEXT AUSLESEN
+  // ================================
+
+  console.log(
+    "💬 Nachrichtentext:",
+    data?.message
+  );
+
+
+  // ================================
+  // BENUTZERNAMEN ERKENNEN
+  // ================================
 
   const usernameRaw =
     data?.chatter_user_name ||
@@ -96,65 +140,113 @@ function chatVerarbeiten(message) {
     data?.username ||
     data?.user?.name;
 
+
   if (usernameRaw) {
+
+    // Alle Namen einheitlich klein schreiben
     const username = usernameRaw.trim().toLowerCase();
 
-    console.log(`💬 Aktivität: ${username}`);
 
+    console.log(
+      `💬 Aktivität: ${username}`
+    );
+
+
+    // Aktivität speichern
     aktivitaetSpeichern(username);
+
+
   } else {
+
     console.log(
       "⚠️ Chat-Nachricht ohne erkannten Benutzernamen."
     );
+
   }
 }
 
-function verbinden() {
-  const ws = new WebSocket("wss://astro.streamelements.com/");
 
+// ================================
+// MIT STREAM-ELEMENTS VERBINDEN
+// ================================
+
+function verbinden() {
+
+  const ws = new WebSocket(
+    "wss://astro.streamelements.com/"
+  );
+
+
+  // Verbindung hergestellt
   ws.on("open", () => {
-    console.log("🦊 Mit StreamElements verbunden.");
+
+    console.log(
+      "🦊 Mit StreamElements verbunden."
+    );
+
   });
 
-  ws.on("message", (raw) => {
-    try {
-      const message = JSON.parse(raw.toString());
 
-      // Erst NACH dem Erstellen von "message" verwenden
+  // Nachrichten von StreamElements
+  ws.on("message", (raw) => {
+
+    try {
+
+      const message =
+        JSON.parse(raw.toString());
+
+
       chatVerarbeiten(message);
 
-      if (message.type === "welcome") {
-        console.log("👋 StreamElements Welcome erhalten.");
 
-        ws.send(
-          JSON.stringify({
-            type: "subscribe",
-            nonce: crypto.randomUUID(),
-            data: {
-              topic: "channel.chat.message",
-              token: STREAMELEMENTS_JWT,
-              token_type: "jwt",
-            },
-          })
-        );
-
-        console.log("🦊 Chat-Überwachung aktiviert.");
-      }
     } catch (error) {
-      console.error("❌ Fehler beim Verarbeiten:", error);
+
+      console.error(
+        "❌ Fehler beim Verarbeiten:",
+        error
+      );
+
     }
+
   });
 
+
+  // Verbindung beendet
   ws.on("close", () => {
-    console.log("⚠️ StreamElements-Verbindung beendet.");
-    setTimeout(verbinden, 5000);
+
+    console.log(
+      "⚠️ StreamElements-Verbindung beendet."
+    );
+
+
+    // Nach 5 Sekunden erneut verbinden
+    setTimeout(
+      verbinden,
+      5000
+    );
+
   });
 
+
+  // WebSocket-Fehler
   ws.on("error", (error) => {
-    console.error("❌ WebSocket-Fehler:", error.message);
+
+    console.error(
+      "❌ WebSocket-Fehler:",
+      error.message
+    );
+
   });
+
 }
+
+
+// ================================
+// BOT STARTEN
+// ================================
 
 verbinden();
 
-console.log("🦊 Fuchs-XP-Bot gestartet.");
+console.log(
+  "🦊 Fuchs-XP-Bot gestartet."
+);
