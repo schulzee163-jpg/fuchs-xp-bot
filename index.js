@@ -737,7 +737,8 @@ async function chatVerarbeiten(message) {
     data?.sender?.username ||
     data?.username ||
     data?.user?.name;
-
+if (!usernameRaw) return;
+if (usernameRaw.toLowerCase() === "streamelements") return;
 
   if (!usernameRaw) {
 
