@@ -8,19 +8,19 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!STREAMELEMENTS_JWT) {
-  console.error("STREAMELEMENTS_JWT fehlt!");
+  console.error("❌ STREAMELEMENTS_JWT fehlt!");
   process.exit(1);
 }
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("Supabase Zugangsdaten fehlen!");
+  console.error("❌ Supabase Zugangsdaten fehlen!");
   process.exit(1);
 }
 
 
-// ================================
+// --------------------------------------------------
 // HTTP-SERVER FÜR RENDER
-// ================================
+// --------------------------------------------------
 
 const server = http.createServer((req, res) => {
   res.writeHead(200, {
@@ -35,9 +35,9 @@ server.listen(PORT, () => {
 });
 
 
-// ================================
+// --------------------------------------------------
 // AKTIVITÄT IN SUPABASE SPEICHERN
-// ================================
+// --------------------------------------------------
 
 async function aktivitaetSpeichern(username) {
   try {
@@ -62,7 +62,7 @@ async function aktivitaetSpeichern(username) {
 
     if (!response.ok) {
       console.error(
-        "❌ Supabase-Fehler:",
+        "❌ Supabase-Fehler beim Speichern:",
         response.status,
         await response.text()
       );
@@ -71,29 +71,26 @@ async function aktivitaetSpeichern(username) {
     }
 
     console.log(`💾 Aktivität gespeichert: ${username}`);
-
   } catch (error) {
-    console.error("❌ Supabase-Fehler:", error);
+    console.error("❌ Fehler beim Speichern der Aktivität:", error);
   }
 }
 
 
-// ================================
-// STREAM-ELEMENTS CHAT-NACHRICHT
-// ================================
+// --------------------------------------------------
+// STREAM ELEMENTS NACHRICHTEN VERARBEITEN
+// --------------------------------------------------
 
 function chatVerarbeiten(message) {
 
-  // Alle Nachrichten zur Kontrolle ausgeben
   console.log(
     "📡 StreamElements Nachricht:",
     JSON.stringify(message)
   );
 
 
-  // Antworten von StreamElements
+  // Antwort von StreamElements
   if (message.type === "response") {
-
     console.log(
       "📨 StreamElements Antwort:",
       JSON.stringify(message)
@@ -109,8 +106,13 @@ function chatVerarbeiten(message) {
   }
 
 
-  // Nur Twitch-Chat-Nachrichten
+  // Topic prüfen
   if (message.topic !== "channel.chat.message") {
+    console.log(
+      "ℹ️ Nachricht mit anderem Topic:",
+      message.topic
+    );
+
     return;
   }
 
@@ -118,20 +120,7 @@ function chatVerarbeiten(message) {
   const data = message.data;
 
 
-  // ================================
-  // NEU: CHAT-TEXT AUSLESEN
-  // ================================
-
-  console.log(
-    "💬 Nachrichtentext:",
-    data?.message
-  );
-
-
-  // ================================
-  // BENUTZERNAMEN ERKENNEN
-  // ================================
-
+  // Verschiedene mögliche Namen ausprobieren
   const usernameRaw =
     data?.chatter_user_name ||
     data?.chatter_user_login ||
@@ -141,36 +130,39 @@ function chatVerarbeiten(message) {
     data?.user?.name;
 
 
-  if (usernameRaw) {
-
-    // Alle Namen einheitlich klein schreiben
-    const username = usernameRaw.trim().toLowerCase();
-
-
-    console.log(
-      `💬 Aktivität: ${username}`
-    );
-
-
-    // Aktivität speichern
-    aktivitaetSpeichern(username);
-
-
-  } else {
-
+  if (!usernameRaw) {
     console.log(
       "⚠️ Chat-Nachricht ohne erkannten Benutzernamen."
     );
 
+    return;
   }
+
+
+  // Benutzernamen vereinheitlichen
+  const username = usernameRaw
+    .trim()
+    .toLowerCase();
+
+
+  console.log(
+    `💬 Aktivität erkannt: ${username}`
+  );
+
+
+  // Aktivität in Supabase speichern
+  aktivitaetSpeichern(username);
 }
 
 
-// ================================
-// MIT STREAM-ELEMENTS VERBINDEN
-// ================================
+// --------------------------------------------------
+// STREAM ELEMENTS VERBINDUNG
+// --------------------------------------------------
 
 function verbinden() {
+
+  console.log("🔌 Verbinde mit StreamElements...");
+
 
   const ws = new WebSocket(
     "wss://astro.streamelements.com/"
@@ -192,17 +184,71 @@ function verbinden() {
 
     try {
 
-      const message =
-        JSON.parse(raw.toString());
+      const message = JSON.parse(
+        raw.toString()
+      );
 
 
+      // ALLES anzeigen, was StreamElements schickt
+      console.log(
+        "📥 RAW STREAM ELEMENTS:",
+        JSON.stringify(message)
+      );
+
+
+      // Willkommen / Verbindung
+      if (message.type === "welcome") {
+
+        console.log(
+          "👋 StreamElements Welcome erhalten."
+        );
+
+
+        const subscribeNachricht = {
+          type: "subscribe",
+
+          nonce: crypto.randomUUID(),
+
+          data: {
+            topic: "channel.chat.message",
+            token: STREAMELEMENTS_JWT,
+            token_type: "jwt",
+          },
+        };
+
+
+        console.log(
+          "📡 Sende Subscribe:",
+          JSON.stringify({
+            ...subscribeNachricht,
+            data: {
+              ...subscribeNachricht.data,
+              token: "***",
+            },
+          })
+        );
+
+
+        ws.send(
+          JSON.stringify(
+            subscribeNachricht
+          )
+        );
+
+
+        console.log(
+          "🦊 Chat-Überwachung aktiviert."
+        );
+      }
+
+
+      // Nachricht verarbeiten
       chatVerarbeiten(message);
-
 
     } catch (error) {
 
       console.error(
-        "❌ Fehler beim Verarbeiten:",
+        "❌ Fehler beim Verarbeiten der StreamElements-Nachricht:",
         error
       );
 
@@ -211,15 +257,18 @@ function verbinden() {
   });
 
 
-  // Verbindung beendet
+  // Verbindung geschlossen
   ws.on("close", () => {
 
     console.log(
       "⚠️ StreamElements-Verbindung beendet."
     );
 
+    console.log(
+      "🔄 Neuer Verbindungsversuch in 5 Sekunden..."
+    );
 
-    // Nach 5 Sekunden erneut verbinden
+
     setTimeout(
       verbinden,
       5000
@@ -241,12 +290,12 @@ function verbinden() {
 }
 
 
-// ================================
+// --------------------------------------------------
 // BOT STARTEN
-// ================================
+// --------------------------------------------------
 
 verbinden();
 
 console.log(
-  "🦊 Fuchs-XP-Bot gestartet."
+  "🦊 Fuchs-XP-Bot gestartet!"
 );
