@@ -357,7 +357,321 @@ async function questsPruefen(username, text) {
   }
 }
 
+// =====================================================
+// PVP-SYSTEM
+// =====================================================
 
+async function streamelementsSenden(text) {
+  try {
+    const channelResponse = await fetch(
+      "https://api.streamelements.com/kappa/v2/channels/me",
+      {
+        headers: {
+          Authorization: `Bearer ${STREAMELEMENTS_JWT}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!channelResponse.ok) {
+      console.error(
+        "❌ StreamElements Kanal konnte nicht geladen werden:",
+        channelResponse.status,
+        await channelResponse.text()
+      );
+      return;
+    }
+
+    const channel = await channelResponse.json();
+    const channelId = channel._id;
+
+    const response = await fetch(
+      `https://api.streamelements.com/kappa/v2/bot/${channelId}/say`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${STREAMELEMENTS_JWT}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: text,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        "❌ StreamElements Chat-Fehler:",
+        response.status,
+        await response.text()
+      );
+      return;
+    }
+
+    console.log("📢 Bot-Nachricht gesendet:", text);
+  } catch (error) {
+    console.error(
+      "❌ Fehler beim Senden der Bot-Nachricht:",
+      error
+    );
+  }
+}
+
+
+async function pvpProfilAktualisieren(
+  username,
+  siege,
+  niederlagen
+) {
+  const profilResponse = await fetch(
+    `${SUPABASE_URL}/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
+      username
+    )}&select=pvp_siege,pvp_niederlagen`,
+    {
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    }
+  );
+
+  if (!profilResponse.ok) {
+    console.error(
+      "❌ PvP-Profil konnte nicht geladen werden:",
+      await profilResponse.text()
+    );
+    return false;
+  }
+
+  const profile = await profilResponse.json();
+
+  if (!profile.length) {
+    const erstellen = await fetch(
+      `${SUPABASE_URL}/rest/v1/fuchsprofile`,
+      {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          spieler: username,
+          pvp_siege: siege,
+          pvp_niederlagen: niederlagen,
+        }),
+      }
+    );
+
+    return erstellen.ok;
+  }
+
+  const neueSiege =
+    (profile[0].pvp_siege || 0) + siege;
+
+  const neueNiederlagen =
+    (profile[0].pvp_niederlagen || 0) + niederlagen;
+
+  const update = await fetch(
+    `${SUPABASE_URL}/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
+      username
+    )}`,
+    {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        pvp_siege: neueSiege,
+        pvp_niederlagen: neueNiederlagen,
+        aktualisiert: new Date().toISOString(),
+      }),
+    }
+  );
+
+  if (!update.ok) {
+    console.error(
+      "❌ PvP-Profil konnte nicht aktualisiert werden:",
+      await update.text()
+    );
+    return false;
+  }
+
+  return true;
+}
+
+
+async function pvpVerarbeiten(username, text) {
+  const nachricht = text.trim();
+
+  // ---------------------------------------------------
+  // !pvp @Name
+  // ---------------------------------------------------
+
+  const herausforderung =
+    nachricht.match(/^!pvp\s+@?([a-zA-Z0-9_]+)$/i);
+
+  if (herausforderung) {
+    const gegner =
+      herausforderung[1].toLowerCase();
+
+    if (gegner === username) {
+      return "❌ Du kannst dich nicht selbst herausfordern.";
+    }
+
+    const vorhandene = await fetch(
+      `${SUPABASE_URL}/rest/v1/offene_kampfe?herausforderer=eq.${encodeURIComponent(
+        username
+      )}&gegner=eq.${encodeURIComponent(
+        gegner
+      )}&select=id&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+      }
+    );
+
+    if (vorhandene.ok) {
+      const daten = await vorhandene.json();
+
+      if (daten.length) {
+        return `⚔️ @${gegner} wurde bereits von @${username} herausgefordert.`;
+      }
+    }
+
+    const anlegen = await fetch(
+      `${SUPABASE_URL}/rest/v1/offene_kampfe`,
+      {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          herausforderer: username,
+          gegner: gegner,
+          erstellt: new Date().toISOString(),
+        }),
+      }
+    );
+
+    if (!anlegen.ok) {
+      console.error(
+        "❌ PvP-Herausforderung konnte nicht gespeichert werden:",
+        await anlegen.text()
+      );
+
+      return "❌ Die PvP-Herausforderung konnte nicht gespeichert werden.";
+    }
+
+    return `⚔️ @${username} fordert @${gegner} zum PvP heraus! @${gegner} hat 60 Sekunden Zeit mit !annehmen zu antworten!`;
+  }
+
+
+  // ---------------------------------------------------
+  // !annehmen
+  // ---------------------------------------------------
+
+  if (nachricht.toLowerCase() === "!annehmen") {
+    const seit =
+      new Date(
+        Date.now() - 60 * 1000
+      ).toISOString();
+
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/offene_kampfe?gegner=eq.${encodeURIComponent(
+        username
+      )}&erstellt=gte.${encodeURIComponent(
+        seit
+      )}&select=id,herausforderer,gegner,erstellt&order=erstellt.desc&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        "❌ PvP-Kampf konnte nicht geladen werden:",
+        await response.text()
+      );
+
+      return "❌ Der PvP-Kampf konnte nicht geladen werden.";
+    }
+
+    const kaempfe = await response.json();
+
+    if (!kaempfe.length) {
+      return "❌ Du hast keine gültige PvP-Herausforderung in den letzten 60 Sekunden.";
+    }
+
+    const kampf = kaempfe[0];
+
+    // Kampf sofort aus offener Liste löschen
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/offene_kampfe?id=eq.${kampf.id}`,
+      {
+        method: "DELETE",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+      }
+    );
+
+    const herausforderer =
+      kampf.herausforderer;
+
+    const gegner =
+      kampf.gegner;
+
+    // Zufälliger Kampfausgang
+    const herausfordererGewinnt =
+      Math.random() < 0.5;
+
+    const gewinner =
+      herausfordererGewinnt
+        ? herausforderer
+        : gegner;
+
+    const verlierer =
+      herausfordererGewinnt
+        ? gegner
+        : herausforderer;
+
+    await pvpProfilAktualisieren(
+      gewinner,
+      1,
+      0
+    );
+
+    await pvpProfilAktualisieren(
+      verlierer,
+      0,
+      1
+    );
+
+    await xpHinzufuegen(
+      gewinner,
+      100
+    );
+
+    return `⚔️ PVP-KAMPF! @${herausforderer} 🆚 @${gegner} | 🏆 Gewinner: @${gewinner}! +100 FuchsXP 🦊 | 💀 @${verlierer} verliert den Kampf.`;
+  }
+
+  return null;
+}
 // =====================================================
 // CHAT-NACHRICHT VERARBEITEN
 // =====================================================
@@ -467,7 +781,19 @@ async function chatVerarbeiten(message) {
   // ---------------------------------------------------
   // Aktivität speichern
   // ---------------------------------------------------
+// ---------------------------------------------------
+// PVP prüfen
+// ---------------------------------------------------
 
+const pvpAntwort = await pvpVerarbeiten(
+  username,
+  text
+);
+
+if (pvpAntwort) {
+  await streamelementsSenden(pvpAntwort);
+  return;
+}
   await aktivitaetSpeichern(username);
 
 
