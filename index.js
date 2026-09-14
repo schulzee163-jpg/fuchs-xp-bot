@@ -295,15 +295,18 @@ async function questsPruefen(username, text) {
   // Ziel: 5 Nachrichten mit Emoji
   // ---------------------------------------------------
 
-  const emojiGefunden =
-    /[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]/u.test(text);
+  // Quest 2 – jedes einzelne Emoji zählt
+const emojiTreffer =
+  text.match(/[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]/gu)?.length ?? 0;
 
-  if (emojiGefunden) {
-    await questFortschritt(
-      username,
-      2,
-      1,
-      5
+if (emojiTreffer > 0) {
+  await questFortschritt(
+    username,
+    2,
+    emojiTreffer,
+    5
+  );
+}
     );
   }
 
