@@ -274,12 +274,14 @@ async function questFortschritt(username, questNummer, menge, ziel) {
 
 async function questsPruefen(username, text) {
   const nachricht = text.toLowerCase();
+async function questsPruefen(username, text) {
+  const nachricht = String(text || "").toLowerCase();
 
-  // ---------------------------------------------------
+  // --------------------------------------------
   // QUEST 1
   // 💬 Nachrichten schreiben
   // Ziel: 10 Nachrichten
-  // ---------------------------------------------------
+  // --------------------------------------------
 
   await questFortschritt(
     username,
@@ -288,32 +290,30 @@ async function questsPruefen(username, text) {
     10
   );
 
-
-  // ---------------------------------------------------
+  // --------------------------------------------
   // QUEST 2
   // 😀 Emojis benutzen
-  // Ziel: 5 Nachrichten mit Emoji
-  // ---------------------------------------------------
-// Quest 2 – jedes einzelne Emoji zählt
-const emojiTreffer =
-  text.match(/[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]/gu)?.length ?? 0;
+  // Jedes einzelne Emoji zählt
+  // Ziel: 5 Emojis
+  // --------------------------------------------
 
-if (emojiTreffer > 0) {
-  await questFortschritt(
-    username,
-    2,
-    emojiTreffer,
-    5
-      );
-}
+  const emojiTreffer =
+    nachricht.match(/[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]/gu)?.length ?? 0;
 
+  if (emojiTreffer > 0) {
+    await questFortschritt(
+      username,
+      2,
+      emojiTreffer,
+      5
+    );
+  }
 
-
-  // ---------------------------------------------------
+  // --------------------------------------------
   // QUEST 3
   // 🥕 "Vegeta" schreiben
   // Ziel: 1x
-  // ---------------------------------------------------
+  // --------------------------------------------
 
   if (nachricht.includes("vegeta")) {
     await questFortschritt(
@@ -321,14 +321,13 @@ if (emojiTreffer > 0) {
       3,
       1,
       1
-      );
-}
+    );
+  }
 
-
-  // ---------------------------------------------------
+  // --------------------------------------------
   // QUEST 4
   // 🦊 "Fuchs" 3-mal schreiben
-  // ---------------------------------------------------
+  // --------------------------------------------
 
   const fuchsTreffer =
     nachricht.match(/fuchs/g)?.length ?? 0;
@@ -342,11 +341,10 @@ if (emojiTreffer > 0) {
     );
   }
 
-
-  // ---------------------------------------------------
+  // --------------------------------------------
   // QUEST 5
   // 🎯 "Ich liebe Füchse" 2-mal schreiben
-  // ---------------------------------------------------
+  // --------------------------------------------
 
   if (nachricht.includes("ich liebe füchse")) {
     await questFortschritt(
