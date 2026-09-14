@@ -1,22 +1,10 @@
 import http from "http";
 import WebSocket from "ws";
 
-const SUPABASE_URL =
-  process.env.SUPABASE_URL ||
-  "https://herznunvdqcmzeffblgo.supabase.co";
-
-const SUPABASE_SERVICE_ROLE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const STREAMELEMENTS_JWT =
-  process.env.STREAMELEMENTS_JWT;
-
+const SUPABASE_URL = process.env.SUPABASE_URL || "https://herznunvdqcmzeffblgo.supabase.co";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const STREAMELEMENTS_JWT = process.env.STREAMELEMENTS_JWT;
 let streamElementsRoomId = null;
-
-
-// =====================================================
-// SUPABASE
-// =====================================================
 
 function headers(extra = {}) {
   return {
@@ -27,7 +15,6 @@ function headers(extra = {}) {
   };
 }
 
-
 async function supabase(path, options = {}) {
   const response = await fetch(`${SUPABASE_URL}${path}`, {
     ...options,
@@ -37,23 +24,17 @@ async function supabase(path, options = {}) {
   const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(
-      `Supabase ${response.status}: ${text}`
-    );
+    throw new Error(`Supabase ${response.status}: ${text}`);
   }
 
   return text ? JSON.parse(text) : null;
 }
 
-
-async function rpc(functionName, body = {}) {
-  return supabase(
-    `/rest/v1/rpc/${functionName}`,
-    {
-      method: "POST",
-      body: JSON.stringify(body),
-    }
-  );
+async function rpc(name, body = {}) {
+  return supabase(`/rest/v1/rpc/${name}`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 
@@ -62,32 +43,19 @@ async function rpc(functionName, body = {}) {
 // =====================================================
 
 async function streamelementsSenden(text) {
-  if (!STREAMELEMENTS_JWT) {
-    console.log(
-      "â ï¸ StreamElements JWT fehlt."
-    );
-    return false;
-  }
-
-  if (!streamElementsRoomId) {
-    console.log(
-      "â ï¸ StreamElements Room-ID fehlt."
-    );
+  if (!STREAMELEMENTS_JWT || !streamElementsRoomId) {
+    console.log("⚠️ StreamElements JWT oder Room-ID fehlt.");
     return false;
   }
 
   try {
     const response = await fetch(
-      `https://api.streamelements.com/kappa/v2/bot/${encodeURIComponent(
-        streamElementsRoomId
-      )}/say`,
+      `https://api.streamelements.com/kappa/v2/bot/${encodeURIComponent(streamElementsRoomId)}/say`,
       {
         method: "POST",
         headers: {
-          Authorization:
-            `Bearer ${STREAMELEMENTS_JWT}`,
-          "Content-Type":
-            "application/json",
+          Authorization: `Bearer ${STREAMELEMENTS_JWT}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           message: text,
@@ -99,20 +67,17 @@ async function streamelementsSenden(text) {
 
     if (!response.ok) {
       console.error(
-        `â StreamElements ${response.status}: ${body}`
+        `❌ StreamElements ${response.status}: ${body}`
       );
       return false;
     }
 
-    console.log(
-      `ð¤ StreamElements: ${text}`
-    );
-
+    console.log(`📤 StreamElements: ${text}`);
     return true;
 
   } catch (error) {
     console.error(
-      "â StreamElements senden:",
+      "❌ StreamElements senden:",
       error.message
     );
 
@@ -122,34 +87,28 @@ async function streamelementsSenden(text) {
 
 
 // =====================================================
-// AKTIVITÃT
+// AKTIVITÄT
 // =====================================================
 
 async function aktivitaetSpeichern(username) {
   try {
     await supabase(
-      `/rest/v1/fuchs_aktivitaet?on_conflict=spieler`,
+      "/rest/v1/fuchs_aktivitaet?on_conflict=spieler",
       {
         method: "POST",
         headers: {
-          Prefer:
-            "resolution=merge-duplicates",
+          Prefer: "resolution=merge-duplicates",
         },
         body: JSON.stringify({
           spieler: username,
-          letzte_aktivitaet:
-            new Date().toISOString(),
+          letzte_aktivitaet: new Date().toISOString(),
         }),
       }
     );
 
-    console.log(
-      `ð¾ AktivitÃ¤t gespeichert: ${username}`
-    );
-
   } catch (error) {
     console.error(
-      "â AktivitÃ¤t speichern:",
+      "❌ Aktivität speichern:",
       error.message
     );
   }
@@ -160,6 +119,14 @@ async function aktivitaetSpeichern(username) {
 // NORMALE QUESTS
 // =====================================================
 
+const normaleZiele = {
+  1: 10,
+  2: 5,
+  3: 1,
+  4: 3,
+  5: 2,
+};
+
 async function questsAnlegen(username) {
   try {
     await rpc(
@@ -168,22 +135,22 @@ async function questsAnlegen(username) {
         spieler_name: username,
       }
     );
+
   } catch (error) {
     console.error(
-      "â Normale Quests anlegen:",
+      "❌ Normale Quests anlegen:",
       error.message
     );
   }
 }
 
-
 async function questFortschrittHolen(username) {
-  try {
-    const datum =
-      new Date()
-        .toISOString()
-        .slice(0, 10);
+  const datum =
+    new Date()
+      .toISOString()
+      .slice(0, 10);
 
+  try {
     return await supabase(
       `/rest/v1/quest_fortschritt` +
       `?spieler=eq.${encodeURIComponent(username)}` +
@@ -193,7 +160,7 @@ async function questFortschrittHolen(username) {
 
   } catch (error) {
     console.error(
-      "â Quest-Fortschritt holen:",
+      "❌ Quest-Fortschritt:",
       error.message
     );
 
@@ -201,16 +168,12 @@ async function questFortschrittHolen(username) {
   }
 }
 
-
 async function questsPruefen(username, text) {
   try {
-
     await questsAnlegen(username);
 
     const vorher =
-      await questFortschrittHolen(
-        username
-      );
+      await questFortschrittHolen(username);
 
     await rpc(
       "quest_nachricht_verarbeiten",
@@ -221,108 +184,77 @@ async function questsPruefen(username, text) {
     );
 
     const nachher =
-      await questFortschrittHolen(
-        username
-      );
+      await questFortschrittHolen(username);
 
     const vorherMap =
       new Map(
-        vorher.map(
-          q => [
-            q.quest_nummer,
-            Number(q.fortschritt || 0)
-          ]
-        )
+        vorher.map(q => [
+          Number(q.quest_nummer),
+          Number(q.fortschritt || 0),
+        ])
       );
 
-    const ziele = {
-      1: 10,
-      2: 5,
-      3: 1,
-      4: 3,
-      5: 2,
-    };
-
-
-    // PrÃ¼fen, ob eine normale Quest
-    // gerade abgeschlossen wurde
-
-    for (const quest of nachher) {
-
+    for (const q of nachher) {
       const nummer =
-        Number(quest.quest_nummer);
+        Number(q.quest_nummer);
 
       const alt =
         vorherMap.get(nummer) || 0;
 
       const neu =
-        Number(quest.fortschritt || 0);
-
-      const ziel =
-        ziele[nummer];
+        Number(q.fortschritt || 0);
 
       if (
-        ziel &&
-        neu >= ziel &&
-        alt < ziel
+        normaleZiele[nummer] &&
+        neu >= normaleZiele[nummer] &&
+        alt < normaleZiele[nummer]
       ) {
-
         await streamelementsSenden(
-          `@${username} Quest erfolgreich erledigt! +10 FuchsXP ð¦`
+          `@${username} Quest erfolgreich erledigt! +10 FuchsXP 🦊`
         );
       }
     }
 
-
-    // PrÃ¼fen, ob alle 5 normalen
-    // Quests fertig sind
-
     const alleFertig =
-      nachher.length >= 5 &&
-      nachher.every(q => {
-        const ziel =
-          ziele[
-            Number(q.quest_nummer)
-          ];
+      [1, 2, 3, 4, 5].every(n => {
+        const q =
+          nachher.find(
+            x => Number(x.quest_nummer) === n
+          );
 
         return (
-          ziel &&
+          q &&
           Number(q.fortschritt || 0)
-            >= ziel
+            >= normaleZiele[n]
         );
       });
-
 
     const vorherAlleFertig =
-      vorher.length >= 5 &&
-      vorher.every(q => {
-        const ziel =
-          ziele[
-            Number(q.quest_nummer)
-          ];
+      [1, 2, 3, 4, 5].every(n => {
+        const q =
+          vorher.find(
+            x => Number(x.quest_nummer) === n
+          );
 
         return (
-          ziel &&
+          q &&
           Number(q.fortschritt || 0)
-            >= ziel
+            >= normaleZiele[n]
         );
       });
-
 
     if (
       alleFertig &&
       !vorherAlleFertig
     ) {
-
       await streamelementsSenden(
-        `@${username} Du hast heute alle Aufgaben erledigt! Komm morgen wieder â dann warten neue Aufgaben auf dich! ð¦ð`
+        `@${username} Du hast heute alle 5 normalen Aufgaben erledigt! 🦊🏆`
       );
     }
 
   } catch (error) {
-
     console.error(
-      "â Normale Quests:",
+      "❌ Normale Quests:",
       error.message
     );
   }
@@ -330,56 +262,45 @@ async function questsPruefen(username, text) {
 
 
 // =====================================================
-// PERSÃNLICHE QUESTS
+// PERSÖNLICHE QUESTS
 // =====================================================
 
-// Reihenfolge:
-// 6 = Gaming
-// 7 = Twitch
-// 8 = Rudel
-// 9 = Hallo
-// 10 = Mega
-//
-// WICHTIG:
-// Immer nur die ERSTE offene persÃ¶nliche Quest zÃ¤hlt.
-// Nach Abschluss wird NICHT automatisch die nÃ¤chste Quest angezeigt.
-// Der Spieler schreibt danach wieder !quest.
-
 const persoenlicheQuests = {
+
   6: {
     wort: "gaming",
     ziel: 2,
     text:
-      "ð® Deine persÃ¶nliche Aufgabe ist: Schreibe âGamingâ 2-mal innerhalb von 60 Sekunden."
+      "🎮 Deine persönliche Aufgabe ist: Schreibe „Gaming“ 2-mal innerhalb von 60 Sekunden.",
   },
 
   7: {
     wort: "twitch",
     ziel: 2,
     text:
-      "ð Deine persÃ¶nliche Aufgabe ist: Schreibe âTwitchâ 2-mal innerhalb von 60 Sekunden."
+      "💜 Deine persönliche Aufgabe ist: Schreibe „Twitch“ 2-mal innerhalb von 60 Sekunden.",
   },
 
   8: {
     wort: "rudel",
     ziel: 2,
     text:
-      "ðº Deine persÃ¶nliche Aufgabe ist: Schreibe âRudelâ 2-mal innerhalb von 60 Sekunden."
+      "🐺 Deine persönliche Aufgabe ist: Schreibe „Rudel“ 2-mal innerhalb von 60 Sekunden.",
   },
 
   9: {
     wort: "hallo",
     ziel: 3,
     text:
-      "ð Deine persÃ¶nliche Aufgabe ist: Schreibe âHalloâ 3-mal innerhalb von 60 Sekunden."
+      "👋 Deine persönliche Aufgabe ist: Schreibe „Hallo“ 3-mal innerhalb von 60 Sekunden.",
   },
 
   10: {
     wort: "mega",
     ziel: 2,
     text:
-      "â­ Deine persÃ¶nliche Aufgabe ist: Schreibe âMegaâ 2-mal innerhalb von 60 Sekunden."
-  }
+      "🌟 Deine persönliche Aufgabe ist: Schreibe „Mega“ 2-mal innerhalb von 60 Sekunden.",
+  },
 };
 
 
@@ -389,12 +310,13 @@ async function persoenlicheQuestsAnlegen(username) {
       "persoenliche_quest_pruefen",
       {
         spieler_name: username,
-        nachricht: ""
+        nachricht: "",
       }
     );
+
   } catch (error) {
     console.error(
-      "â PersÃ¶nliche Quests anlegen:",
+      "❌ Persönliche Quests anlegen:",
       error.message
     );
   }
@@ -402,12 +324,12 @@ async function persoenlicheQuestsAnlegen(username) {
 
 
 async function persoenlicheQuestsHolen(username) {
-  try {
-    const datum =
-      new Date()
-        .toISOString()
-        .slice(0, 10);
+  const datum =
+    new Date()
+      .toISOString()
+      .slice(0, 10);
 
+  try {
     return await supabase(
       `/rest/v1/daily_quest_assignments` +
       `?spieler=eq.${encodeURIComponent(username)}` +
@@ -416,9 +338,10 @@ async function persoenlicheQuestsHolen(username) {
       `&quest_nummer=lte.10` +
       `&order=quest_nummer.asc`
     );
+
   } catch (error) {
     console.error(
-      "â PersÃ¶nliche Quests holen:",
+      "❌ Persönliche Quests holen:",
       error.message
     );
 
@@ -433,57 +356,47 @@ async function persoenlicheQuestsHolen(username) {
 
 async function persoenlicheQuestAnzeigen(username) {
   try {
-    await persoenlicheQuestsAnlegen(username);
+
+    await persoenlicheQuestsAnlegen(
+      username
+    );
 
     const quests =
-      await persoenlicheQuestsHolen(username);
-
-    if (!quests.length) {
-      await streamelementsSenden(
-        `@${username} ð¯ Deine persÃ¶nlichen Aufgaben konnten noch nicht angelegt werden.`
+      await persoenlicheQuestsHolen(
+        username
       );
-      return;
-    }
 
-    // Nur die erste offene Quest anzeigen.
     const aktive =
       quests.find(
         q => !q.abgeschlossen
       );
 
     if (!aktive) {
+
       await streamelementsSenden(
-        `@${username} ð Du hast heute alle persÃ¶nlichen Aufgaben geschafft! Komm morgen wieder fÃ¼r neue Aufgaben! ð¦ð`
+        `@${username} 🎉 Du hast heute alle persönlichen Aufgaben geschafft! Komm morgen wieder für neue Aufgaben! 🦊🏆`
       );
+
       return;
     }
 
-    const questNummer =
-      Number(
-        aktive.quest_nummer
-      );
-
     const quest =
       persoenlicheQuests[
-        questNummer
+        Number(aktive.quest_nummer)
       ];
 
     if (!quest) {
       return;
     }
 
-    const fortschritt =
-      Number(
-        aktive.fortschritt || 0
-      );
-
     await streamelementsSenden(
-      `@${username} ð¯ ${quest.text} â ${fortschritt}/${quest.ziel}`
+      `@${username} ${quest.text} → ${Number(aktive.fortschritt || 0)}/${quest.ziel}`
     );
 
   } catch (error) {
+
     console.error(
-      "â PersÃ¶nliche Quest anzeigen:",
+      "❌ Persönliche Quest anzeigen:",
       error.message
     );
   }
@@ -491,23 +404,27 @@ async function persoenlicheQuestAnzeigen(username) {
 
 
 // =====================================================
-// PERSÃNLICHE QUEST PRÃFEN
+// PERSÖNLICHE QUEST PRÜFEN
 // =====================================================
 
-async function persoenlicheQuestPruefen(username, text) {
+async function persoenlicheQuestPruefen(
+  username,
+  text
+) {
+
   try {
-    await persoenlicheQuestsAnlegen(username);
 
-    let quests =
-      await persoenlicheQuestsHolen(username);
+    await persoenlicheQuestsAnlegen(
+      username
+    );
 
-    if (!quests.length) {
-      return;
-    }
+    const vorher =
+      await persoenlicheQuestsHolen(
+        username
+      );
 
-    // Nur die erste offene Quest zÃ¤hlt.
     const aktive =
-      quests.find(
+      vorher.find(
         q => !q.abgeschlossen
       );
 
@@ -521,63 +438,64 @@ async function persoenlicheQuestPruefen(username, text) {
       );
 
     const quest =
-      persoenlicheQuests[
-        nummer
-      ];
+      persoenlicheQuests[nummer];
 
     if (!quest) {
       return;
     }
 
-    const vorher =
+    const alt =
       Number(
         aktive.fortschritt || 0
       );
 
-    // Nachricht an die Datenbank senden.
     await rpc(
       "persoenliche_quest_pruefen",
       {
         spieler_name: username,
-        nachricht: text
+        nachricht: text,
       }
     );
 
-    quests =
-      await persoenlicheQuestsHolen(username);
-
-    const danach =
-      quests.find(
-        q =>
-          Number(q.quest_nummer) === nummer
+    const nachher =
+      await persoenlicheQuestsHolen(
+        username
       );
 
-    if (!danach) {
+    const aktuell =
+      nachher.find(
+        q =>
+          Number(q.quest_nummer) ===
+          nummer
+      );
+
+    if (!aktuell) {
       return;
     }
 
     const neu =
       Number(
-        danach.fortschritt || 0
+        aktuell.fortschritt || 0
       );
 
-    // Quest gerade abgeschlossen?
     if (
       neu >= quest.ziel &&
-      vorher < quest.ziel
+      alt < quest.ziel
     ) {
+
       await streamelementsSenden(
-        `@${username} â Deine persÃ¶nliche Aufgabe ist erfolgreich abgeschlossen! +10 FuchsXP ð¦`
+        `@${username} ✅ Deine persönliche Aufgabe ist erfolgreich abgeschlossen! +10 FuchsXP 🦊`
       );
 
       // WICHTIG:
-      // Hier wird KEINE nÃ¤chste Quest automatisch angezeigt.
-      // Der Spieler muss dafÃ¼r wieder !quest schreiben.
+      // Keine nächste Quest automatisch anzeigen.
+      // Spieler muss wieder !quest schreiben.
     }
 
   } catch (error) {
+
     console.error(
-      "â PersÃ¶nliche Quest:",
+      "❌ Persönliche Quest:",
       error.message
     );
   }
@@ -599,48 +517,41 @@ async function profil(username) {
         `&limit=1`
       );
 
-
     const p =
       rows?.[0];
 
-
     if (!p) {
-
       return (
-        `ð¦ ${username} hat noch kein Fuchsprofil.`
+        `🦊 ${username} hat noch kein Fuchsprofil.`
       );
     }
-
 
     const xp =
       Number(p.xp || 0);
 
-
     let level =
-      "ð¾ Fuchsbaby";
-
+      "🐾 Fuchsbaby";
 
     if (xp >= 100)
-      level = "ð¦ Jungfuchs";
+      level = "🦊 Jungfuchs";
 
     if (xp >= 250)
-      level = "ð WaldlÃ¤ufer";
+      level = "🍂 Waldläufer";
 
     if (xp >= 500)
-      level = "ð² Rudelfuchs";
+      level = "🌲 Rudelfuchs";
 
     if (xp >= 1000)
-      level = "ð¥ FuchsjÃ¤ger";
+      level = "🔥 Fuchsjäger";
 
     if (xp >= 2000)
-      level = "ð Alphafuchs";
+      level = "👑 Alphafuchs";
 
     if (xp >= 5000)
-      level = "â¨ Fuchslegende";
+      level = "✨ Fuchslegende";
 
     if (xp >= 10000)
-      level = "ð¦ð Fuchsmeister";
-
+      level = "🦊🏆 Fuchsmeister";
 
     const grenzen = [
       100,
@@ -649,40 +560,39 @@ async function profil(username) {
       1000,
       2000,
       5000,
-      10000
+      10000,
     ];
-
 
     const naechstes =
       grenzen.find(
         wert => xp < wert
       );
 
-
     const bis =
       naechstes
         ? naechstes - xp
         : 0;
 
-
     return (
-      `ð¦ ${username}` +
-      ` | â­ ${xp} FuchsXP` +
-      ` | ð Level ${level}` +
-      ` | ðº Rudel: ${p.rudel || "noch nicht gewÃ¤hlt"}` +
-      ` | âï¸ Siege: ${p.pvp_siege || 0}` +
-      ` | ð Niederlagen: ${p.pvp_niederlagen || 0}` +
-      ` | ð Noch ${bis} XP bis zum nÃ¤chsten Level`
+      `🦊 ${username}` +
+      ` | ⭐ ${xp} FuchsXP` +
+      ` | 🏆 ${level}` +
+      ` | 🐺 Rudel: ${p.rudel || "noch nicht gewählt"}` +
+      ` | ⚔️ Siege: ${p.pvp_siege || 0}` +
+      ` | 💀 Niederlagen: ${p.pvp_niederlagen || 0}` +
+      ` | 📈 Noch ${bis} XP bis zum nächsten Level`
     );
 
   } catch (error) {
 
     console.error(
-      "â Profil:",
+      "❌ Profil:",
       error.message
     );
 
-    return `@${username} Profil konnte nicht geladen werden.`;
+    return (
+      `@${username} Profil konnte nicht geladen werden.`
+    );
   }
 }
 
@@ -699,19 +609,17 @@ async function rudelwahl(
   const map = {
 
     feuer:
-      "ð¥ Feuerrudel",
+      "🔥 Feuerrudel",
 
     wasser:
-      "ð Wasserrudel",
+      "🌊 Wasserrudel",
 
     wald:
-      "ð² Waldrudel",
+      "🌲 Waldrudel",
 
     ice:
-      "ð§ ICErudel",
-
+      "🧊 ICErudel",
   };
-
 
   const gewaehlt =
     map[
@@ -719,26 +627,25 @@ async function rudelwahl(
         .toLowerCase()
     ];
 
-
   if (!gewaehlt) {
 
     return (
-      `@${username} Bitte wÃ¤hle: ` +
-      `Feuer, Wasser, Wald oder ICE.`
+      `@${username} Bitte wähle: Feuer, Wasser, Wald oder ICE.`
     );
   }
-
 
   try {
 
     await supabase(
-      `/rest/v1/fuchsprofile?on_conflict=spieler`,
+      "/rest/v1/fuchsprofile?on_conflict=spieler",
       {
         method: "POST",
+
         headers: {
           Prefer:
             "resolution=merge-duplicates",
         },
+
         body: JSON.stringify({
           spieler: username,
           rudel: gewaehlt,
@@ -746,15 +653,14 @@ async function rudelwahl(
       }
     );
 
-
     return (
-      `@${username} ðº Du bist jetzt im ${gewaehlt}!`
+      `@${username} 🐺 Du bist jetzt im ${gewaehlt}!`
     );
 
   } catch (error) {
 
     console.error(
-      "â Rudelwahl:",
+      "❌ Rudelwahl:",
       error.message
     );
 
@@ -780,15 +686,14 @@ async function pvpStart(
 
   if (
     !gegner ||
-    gegner.toLowerCase()
-      === username.toLowerCase()
+    gegner.toLowerCase() ===
+      username.toLowerCase()
   ) {
 
     return (
       `@${username} Du kannst dich nicht selbst herausfordern.`
     );
   }
-
 
   offeneKaempfe.set(
     gegner.toLowerCase(),
@@ -804,9 +709,8 @@ async function pvpStart(
     }
   );
 
-
   return (
-    `âï¸ @${username} fordert @${gegner} zum PvP heraus! ` +
+    `⚔️ @${username} fordert @${gegner} zum PvP heraus! ` +
     `@${gegner} hat 60 Sekunden Zeit mit !annehmen zu antworten!`
   );
 }
@@ -816,53 +720,44 @@ async function pvpAnnehmen(
   username
 ) {
 
-  const key =
-    username.toLowerCase();
-
-
   const kampf =
-    offeneKaempfe.get(key);
-
+    offeneKaempfe.get(
+      username.toLowerCase()
+    );
 
   if (!kampf) {
     return null;
   }
 
-
   if (
     Date.now() -
-    kampf.erstellt
-    > 60_000
+      kampf.erstellt >
+    60000
   ) {
 
-    offeneKaempfe.delete(key);
+    offeneKaempfe.delete(
+      username.toLowerCase()
+    );
 
     return (
       `@${username} Die PvP-Herausforderung ist abgelaufen.`
     );
   }
 
-
-  offeneKaempfe.delete(key);
-
-
-  const herausfordererGewinnt =
-    Math.random() < 0.5;
-
+  offeneKaempfe.delete(
+    username.toLowerCase()
+  );
 
   const gewinner =
-    herausfordererGewinnt
+    Math.random() < 0.5
       ? kampf.herausforderer
       : username;
 
-
   const verlierer =
-    herausfordererGewinnt
+    gewinner ===
+      kampf.herausforderer
       ? username
       : kampf.herausforderer;
-
-
-  // +100 XP
 
   await rpc(
     "fuchs_xp_hinzufuegen",
@@ -875,74 +770,48 @@ async function pvpAnnehmen(
     }
   );
 
-
-  // Sieg speichern
-
   try {
 
-    const rows =
+    const sieg =
       await supabase(
         `/rest/v1/fuchsprofile` +
         `?spieler=eq.${encodeURIComponent(gewinner)}` +
-        `&select=pvp_siege` +
-        `&limit=1`
+        `&select=pvp_siege&limit=1`
       );
-
-
-    const alt =
-      Number(
-        rows?.[0]?.pvp_siege || 0
-      );
-
 
     await supabase(
       `/rest/v1/fuchsprofile` +
       `?spieler=eq.${encodeURIComponent(gewinner)}`,
       {
         method: "PATCH",
+
         body: JSON.stringify({
           pvp_siege:
-            alt + 1,
+            Number(
+              sieg?.[0]?.pvp_siege || 0
+            ) + 1,
         }),
       }
     );
 
-  } catch (error) {
-
-    console.error(
-      "â PvP-Sieg:",
-      error.message
-    );
-  }
-
-
-  // Niederlage speichern
-
-  try {
-
-    const rows =
+    const niederlage =
       await supabase(
         `/rest/v1/fuchsprofile` +
         `?spieler=eq.${encodeURIComponent(verlierer)}` +
-        `&select=pvp_niederlagen` +
-        `&limit=1`
+        `&select=pvp_niederlagen&limit=1`
       );
-
-
-    const alt =
-      Number(
-        rows?.[0]?.pvp_niederlagen || 0
-      );
-
 
     await supabase(
       `/rest/v1/fuchsprofile` +
       `?spieler=eq.${encodeURIComponent(verlierer)}`,
       {
         method: "PATCH",
+
         body: JSON.stringify({
           pvp_niederlagen:
-            alt + 1,
+            Number(
+              niederlage?.[0]?.pvp_niederlagen || 0
+            ) + 1,
         }),
       }
     );
@@ -950,17 +819,28 @@ async function pvpAnnehmen(
   } catch (error) {
 
     console.error(
-      "â PvP-Niederlage:",
+      "❌ PvP-Statistik:",
       error.message
     );
   }
 
-
   return (
-    `âï¸ PVP-KAMPF! ` +
-    `@${kampf.herausforderer} ð @${username} | ` +
-    `ð Gewinner: @${gewinner}! +100 FuchsXP ð¦ | ` +
-    `ð @${verlierer} verliert den Kampf.`
+    `⚔️ PVP-KAMPF! ` +
+    `@${kampf.herausforderer} 🆚 @${username} | ` +
+    `🏆 Gewinner: @${gewinner}! +100 FuchsXP 🦊 | ` +
+    `💀 @${verlierer} verliert den Kampf.`
+  );
+}
+
+
+// =====================================================
+// ALLE BEFEHLE
+// =====================================================
+
+async function alleBefehle(username) {
+
+  await streamelementsSenden(
+    `@${username} 🦊 Befehle: !profil | !rudelwahl Feuer/Wasser/Wald/ICE | !quest | !pvp @Name | !annehmen | !allebefehle`
   );
 }
 
@@ -973,25 +853,19 @@ async function chatVerarbeiten(
   message
 ) {
 
-  console.log(
-    "ð¡ StreamElements Nachricht:",
-    JSON.stringify(message)
-  );
-
-
   if (
-    message.type === "response"
+    message.type ===
+    "response"
   ) {
     return;
   }
 
-
   if (
-    message.type !== "message"
+    message.type !==
+    "message"
   ) {
     return;
   }
-
 
   if (
     message.topic !==
@@ -1000,23 +874,13 @@ async function chatVerarbeiten(
     return;
   }
 
-
-  // Room-ID aus Chatnachricht
-
   if (message.room) {
-
     streamElementsRoomId =
       message.room;
-
-    console.log(
-      `ð  StreamElements Room-ID: ${streamElementsRoomId}`
-    );
   }
-
 
   const data =
     message.data;
-
 
   const usernameRaw =
     data?.chatter_user_name ||
@@ -1026,33 +890,31 @@ async function chatVerarbeiten(
     data?.username ||
     data?.user?.name;
 
-
   if (!usernameRaw) {
     return;
   }
-
 
   const username =
     usernameRaw
       .trim()
       .toLowerCase();
 
+  // Bot-Nachrichten nicht erneut verarbeiten.
+  if (
+    username ===
+    "streamelements"
+  ) {
+    return;
+  }
 
   const text =
     data?.message?.text ||
     data?.text ||
     "";
 
-
   console.log(
-    `ð¬ AktivitÃ¤t erkannt: ${username}`
+    `💬 ${username}: ${text}`
   );
-
-
-  console.log(
-    `ð Nachricht: ${text}`
-  );
-
 
   await aktivitaetSpeichern(
     username
@@ -1068,20 +930,14 @@ async function chatVerarbeiten(
       /^!pvp\s+@?([a-zA-Z0-9_]+)$/i
     );
 
-
   if (pvpMatch) {
 
-    const antwort =
+    await streamelementsSenden(
       await pvpStart(
         username,
         pvpMatch[1]
-      );
-
-
-    await streamelementsSenden(
-      antwort
+      )
     );
-
 
     return;
   }
@@ -1102,14 +958,11 @@ async function chatVerarbeiten(
         username
       );
 
-
     if (antwort) {
-
       await streamelementsSenden(
         antwort
       );
     }
-
 
     return;
   }
@@ -1125,16 +978,9 @@ async function chatVerarbeiten(
     )
   ) {
 
-    const antwort =
-      await profil(
-        username
-      );
-
-
     await streamelementsSenden(
-      antwort
+      await profil(username)
     );
-
 
     return;
   }
@@ -1155,18 +1001,12 @@ async function chatVerarbeiten(
         .trim()
         .split(/\s+/);
 
-
-    const antwort =
+    await streamelementsSenden(
       await rudelwahl(
         username,
         teile[1]
-      );
-
-
-    await streamelementsSenden(
-      antwort
+      )
     );
-
 
     return;
   }
@@ -1186,6 +1026,23 @@ async function chatVerarbeiten(
       username
     );
 
+    return;
+  }
+
+
+  // =================================================
+  // !ALLEBEFEHLE
+  // =================================================
+
+  if (
+    /^!allebefehle$/i.test(
+      text.trim()
+    )
+  ) {
+
+    await alleBefehle(
+      username
+    );
 
     return;
   }
@@ -1202,7 +1059,7 @@ async function chatVerarbeiten(
 
 
   // =================================================
-  // PERSÃNLICHE QUEST
+  // PERSÖNLICHE QUEST
   // =================================================
 
   await persoenlicheQuestPruefen(
@@ -1232,7 +1089,7 @@ function verbinden() {
     () => {
 
       console.log(
-        "ð StreamElements WebSocket verbunden."
+        "🔌 StreamElements WebSocket verbunden."
       );
     }
   );
@@ -1249,53 +1106,38 @@ function verbinden() {
             raw.toString()
           );
 
-
-        // StreamElements BegrÃ¼Ãung
-
         if (
           message.type ===
           "welcome"
         ) {
 
-          const subscribeNachricht = {
-
-            type:
-              "subscribe",
-
-            nonce:
-              crypto.randomUUID(),
-
-            data: {
-
-              topic:
-                "channel.chat.message",
-
-              token:
-                STREAMELEMENTS_JWT,
-
-              token_type:
-                "jwt",
-
-            },
-
-          };
-
-
           ws.send(
-            JSON.stringify(
-              subscribeNachricht
-            )
-          );
+            JSON.stringify({
+              type:
+                "subscribe",
 
+              nonce:
+                crypto.randomUUID(),
+
+              data: {
+                topic:
+                  "channel.chat.message",
+
+                token:
+                  STREAMELEMENTS_JWT,
+
+                token_type:
+                  "jwt",
+              },
+            })
+          );
 
           console.log(
-            "ð¡ StreamElements Chat-Topic abonniert."
+            "📡 StreamElements Chat-Topic abonniert."
           );
-
 
           return;
         }
-
 
         await chatVerarbeiten(
           message
@@ -1304,7 +1146,7 @@ function verbinden() {
       } catch (error) {
 
         console.error(
-          "â WebSocket Nachricht:",
+          "❌ WebSocket Nachricht:",
           error.message
         );
       }
@@ -1317,7 +1159,7 @@ function verbinden() {
     error => {
 
       console.error(
-        "â StreamElements WebSocket:",
+        "❌ StreamElements WebSocket:",
         error.message
       );
     }
@@ -1329,14 +1171,12 @@ function verbinden() {
     () => {
 
       console.log(
-        "â ï¸ StreamElements-Verbindung beendet."
+        "⚠️ StreamElements-Verbindung beendet."
       );
-
 
       console.log(
-        "ð Neuer Verbindungsversuch in 5 Sekunden..."
+        "🔄 Neuer Versuch in 5 Sekunden..."
       );
-
 
       setTimeout(
         verbinden,
@@ -1348,7 +1188,7 @@ function verbinden() {
 
 
 // =====================================================
-// RENDER WEB SERVER
+// RENDER
 // =====================================================
 
 const server =
@@ -1363,9 +1203,8 @@ const server =
         }
       );
 
-
       res.end(
-        "ð¦ Fuchs-XP-Bot lÃ¤uft!"
+        "🦊 Fuchs-XP-Bot läuft!"
       );
     }
   );
@@ -1377,7 +1216,7 @@ server.listen(
   () => {
 
     console.log(
-      `ð Web-Port geÃ¶ffnet auf ${
+      `🌐 Web-Port geöffnet auf ${
         process.env.PORT || 10000
       }.`
     );
@@ -1391,9 +1230,6 @@ server.listen(
 
 verbinden();
 
-
 console.log(
-  "ð¦ Fuchs-XP-Bot gestartet!"
+  "🦊 Fuchs-XP-Bot gestartet!"
 );
-    
-
