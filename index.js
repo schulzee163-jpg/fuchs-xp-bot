@@ -3,1076 +3,643 @@ import WebSocket from "ws";
 
 const PORT = process.env.PORT || 10000;
 
-const STREAMELEMENTS_JWT = process.env.STREAMELEMENTS_JWT;
-const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ||
+  "https://herznunvdqcmzeffblgo.supabase.co";
+
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const STREAMELEMENTS_JWT = process.env.STREAMELEMENTS_JWT;
+
+if (!SUPABASE_SERVICE_ROLE_KEY) {
+  console.error("❌ SUPABASE_SERVICE_ROLE_KEY fehlt.");
+}
 
 if (!STREAMELEMENTS_JWT) {
-  console.error("❌ STREAMELEMENTS_JWT fehlt!");
-  process.exit(1);
+  console.error("❌ STREAMELEMENTS_JWT fehlt.");
 }
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("❌ Supabase Zugangsdaten fehlen!");
-  process.exit(1);
-}
+const QUEST_ZIELE = {
+  1: 10,
+  2: 5,
+  3: 1,
+  4: 3,
+  5: 2
+};
 
+const QUEST_NAMEN = {
+  1: "💬 Nachrichten schreiben",
+  2: "😀 Emojis benutzen",
+  3: "🥕 Vegeta schreiben",
+  4: "🦊 Fuchs 3-mal schreiben",
+  5: "🎯 Ich liebe Füchse 2-mal schreiben"
+};
 
-// =====================================================
-// HTTP-SERVER FÜR RENDER
-// =====================================================
+let ws = null;
+let reconnectTimer = null;
+let streamElementsRoomId = null;
 
-const server = http.createServer((req, res) => {
-  res.writeHead(200, {
-    "Content-Type": "text/plain; charset=utf-8",
-  });
-
-  res.end("🦊 Fuchs-XP-Bot läuft!");
-});
-
-server.listen(PORT, () => {
-  console.log(`🦊 HTTP-Server läuft auf Port ${PORT}`);
-});
-
-
-// =====================================================
-// HILFSFUNKTION: HEUTIGES DATUM
-// Deutschland / Berlin
-// =====================================================
-
-function heutigesDatum() {
-  return new Date().toLocaleDateString("en-CA", {
-    timeZone: "Europe/Berlin",
-  });
-}
-
-
-// =====================================================
-// AKTIVITÄT IN SUPABASE SPEICHERN
-// =====================================================
-
-async function aktivitaetSpeichern(username) {
-  try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/fuchs_aktivitaet?on_conflict=spieler`,
-      {
-        method: "POST",
-        headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates,return=minimal",
-        },
-        body: JSON.stringify({
-          spieler: username,
-          letzte_aktivitaet: new Date().toISOString(),
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      console.error(
-        "❌ Fehler beim Speichern der Aktivität:",
-        response.status,
-        await response.text()
-      );
-      return;
-    }
-
-    console.log(`💾 Aktivität gespeichert: ${username}`);
-  } catch (error) {
-    console.error("❌ Supabase-Fehler:", error);
-  }
-}
-
-
-// =====================================================
-// XP VERGEBEN
-// =====================================================
-
-async function xpHinzufuegen(username, menge) {
-  try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/fuchs_xp_hinzufuegen`,
-      {
-        method: "POST",
-        headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          spieler_name: username,
-          xp_menge: menge,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      console.error(
-        "❌ XP-Fehler:",
-        response.status,
-        await response.text()
-      );
-      return null;
-    }
-
-    const neueXP = await response.json();
-
-    console.log(
-      `⭐ ${username} bekommt +${menge} FuchsXP. Neue XP: ${neueXP}`
-    );
-
-    return neueXP;
-  } catch (error) {
-    console.error("❌ Fehler bei XP-Vergabe:", error);
-    return null;
-  }
-}
-
-
-// =====================================================
-// QUEST-FORTSCHRITT LADEN
-// =====================================================
-
-async function questLaden(username, questNummer, datum) {
-  const url =
-    `${SUPABASE_URL}/rest/v1/quest_fortschritt` +
-    `?spieler=eq.${encodeURIComponent(username)}` +
-    `&datum=eq.${datum}` +
-    `&quest_nummer=eq.${questNummer}` +
-    `&select=id,fortschritt`;
-
-  const response = await fetch(url, {
+async function supabase(path, options = {}) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
       Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-    },
+      "Content-Type": "application/json",
+      Prefer: options.prefer || "return=representation",
+      ...(options.headers || {})
+    }
   });
 
+  const text = await response.text();
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
   if (!response.ok) {
-    console.error(
-      "❌ Fehler beim Laden der Quest:",
-      response.status,
-      await response.text()
+    throw new Error(
+      `Supabase ${response.status}: ${
+        typeof data === "string" ? data : JSON.stringify(data)
+      }`
     );
-    return null;
   }
 
-  const data = await response.json();
-
-  if (!data.length) {
-    return null;
-  }
-
-  return data[0];
+  return data;
 }
 
-
-// =====================================================
-// QUEST-FORTSCHRITT SPEICHERN
-// =====================================================
-async function questFortschritt(
-  username,
-  questNummer,
-  fortschritt,
-  datum
-) {
+async function rpc(functionName, body) {
   const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/quest_fortschritt?on_conflict=spieler,datum,quest_nummer`,
+    `${SUPABASE_URL}/rest/v1/rpc/${functionName}`,
     {
       method: "POST",
       headers: {
         apikey: SUPABASE_SERVICE_ROLE_KEY,
         Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=minimal",
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        spieler: username,
-        datum: datum,
-        quest_nummer: questNummer,
-        fortschritt: fortschritt,
-        aktualisiert: new Date().toISOString(),
-      }),
+      body: JSON.stringify(body)
+    }
+  );
+
+  const text = await response.text();
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `RPC ${functionName} ${response.status}: ${
+        typeof data === "string" ? data : JSON.stringify(data)
+      }`
+    );
+  }
+
+  return data;
+}
+
+async function streamelementsSenden(text) {
+  if (!STREAMELEMENTS_JWT || !streamElementsRoomId) {
+    console.error(
+      "⚠️ StreamElements kann nicht senden: JWT oder Room-ID fehlt."
+    );
+    return;
+  }
+
+  const response = await fetch(
+    `https://api.streamelements.com/kappa/v2/bot/${streamElementsRoomId}/say`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${STREAMELEMENTS_JWT}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: text })
     }
   );
 
   if (!response.ok) {
+    const errorText = await response.text();
     console.error(
-      "❌ Fehler beim Speichern der Quest:",
-      response.status,
-      await response.text()
+      `❌ StreamElements Senden fehlgeschlagen (${response.status}): ${errorText}`
     );
-
-    return false;
-  }
-  // =====================================================
-// =====================================================
-// QUEST-FORTSCHRITT SPEICHERN
-// =====================================================
-
-async function questSpeichern(
-  username,
-  questNummer,
-  fortschritt,
-  datum
-) {
-  try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/quest_fortschritt?on_conflict=spieler,datum,quest_nummer`,
-      {
-        method: "POST",
-        headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates,return=minimal",
-        },
-        body: JSON.stringify({
-          spieler: username,
-          datum: datum,
-          quest_nummer: questNummer,
-          fortschritt: fortschritt,
-          aktualisiert: new Date().toISOString(),
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      console.error(
-        "❌ Fehler beim Speichern der Quest:",
-        response.status,
-        await response.text()
-      );
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error(
-      "❌ Fehler beim Quest-Speichern:",
-      error
-    );
-    return false;
-  }
-}
-// =====================================================
-// QUEST FORTSCHRITT AKTUALISIEREN
-// =====================================================
-
-async function questFortschritt(
-  username,
-  questNummer,
-  menge,
-  ziel
-) {
-  const datum = heutigesDatum();
-
-  const aktuelleQuest = await questLaden(
-    username,
-    questNummer,
-    datum
-  );
-
-  const alterFortschritt =
-    aktuelleQuest?.fortschritt ?? 0;
-
-  if (alterFortschritt >= ziel) {
     return;
   }
 
-  const neuerFortschritt = Math.min(
-    alterFortschritt + menge,
-    ziel
-  );
-
-  const gespeichert = await questSpeichern(
-    username,
-    questNummer,
-    neuerFortschritt,
-    datum
-  );
-
-  if (!gespeichert) {
-    return;
-  }
-
-  console.log(
-    `📜 ${username} Quest ${questNummer}: ${neuerFortschritt}/${ziel}`
-  );
-
-  if (
-    alterFortschritt < ziel &&
-    neuerFortschritt >= ziel
-  ) {
-    await xpHinzufuegen(username, 10);
-
-    const questNamen = {
-      1: "💬 Nachrichten schreiben",
-      2: "😀 Emojis benutzen",
-      3: "🥕 Vegeta schreiben",
-      4: "🦊 Fuchs schreiben",
-      5: "🎯 Ich liebe Füchse"
-    };
-
-    const questName =
-      questNamen[questNummer] || `Quest ${questNummer}`;
-
-    const chatNachricht =
-      `🎉 @${username} hat die Quest "${questName}" erfolgreich abgeschlossen! +10 FuchsXP 🦊`;
-
-    await streamelementsSenden(chatNachricht);
-
-    console.log(
-      `🎉 ${username} hat Quest ${questNummer} erfolgreich abgeschlossen! +10 FuchsXP`
-    );
-  }
+  console.log("📤 StreamElements:", text);
 }
 
+async function aktivitaetSpeichern(username) {
+  const jetzt = new Date().toISOString();
 
-// =====================================================
-// DAILY QUESTS
-// =====================================================
-
-async function questsPruefen(username, text) {
-  const nachricht = String(text || "").toLowerCase();
-
-  await questFortschritt(
-    username,
-    1,
-    1,
-    10
-  );
-
-  const emojiTreffer =
-    nachricht.match(
-      /[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]/gu
-    )?.length ?? 0;
-
-  if (emojiTreffer > 0) {
-    await questFortschritt(
-      username,
-      2,
-      emojiTreffer,
-      5
-    );
-  }
-
-  if (nachricht.includes("vegeta")) {
-    await questFortschritt(
-      username,
-      3,
-      1,
-      1
-    );
-  }
-
-  const fuchsTreffer =
-    nachricht.match(/fuchs/g)?.length ?? 0;
-
-  if (fuchsTreffer > 0) {
-    await questFortschritt(
-      username,
-      4,
-      fuchsTreffer,
-      3
-    );
-  }
-
-  if (nachricht.includes("ich liebe füchse")) {
-    await questFortschritt(
-      username,
-      5,
-      1,
-      2
-    );
-  }
-}
-
-// =====================================================
-// DAILY QUESTS
-// =====================================================
-
-async function questsPruefen(username, text) {
-  const nachricht = text.toLowerCase();
-
-  // --------------------------------------------
-  // QUEST 1
-  // 💬 Nachrichten schreiben
-  // Ziel: 10 Nachrichten
-  // --------------------------------------------
-
-  await questFortschritt(
-    username,
-    1,
-    1,
-    10
-  );
-
-  // --------------------------------------------
-  // QUEST 2
-  // 😀 Emojis benutzen
-  // Jedes einzelne Emoji zählt
-  // Ziel: 5 Emojis
-  // --------------------------------------------
-
-  const emojiTreffer =
-    nachricht.match(/[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]/gu)?.length ?? 0;
-
-  if (emojiTreffer > 0) {
-    await questFortschritt(
-      username,
-      2,
-      emojiTreffer,
-      5
-    );
-  }
-
-  // --------------------------------------------
-  // QUEST 3
-  // 🥕 "Vegeta" schreiben
-  // Ziel: 1x
-  // --------------------------------------------
-
-  if (nachricht.includes("vegeta")) {
-    await questFortschritt(
-      username,
-      3,
-      1,
-      1
-    );
-  }
-
-  // --------------------------------------------
-  // QUEST 4
-  // 🦊 "Fuchs" 3-mal schreiben
-  // --------------------------------------------
-
-  const fuchsTreffer =
-    nachricht.match(/fuchs/g)?.length ?? 0;
-
-  if (fuchsTreffer > 0) {
-    await questFortschritt(
-      username,
-      4,
-      fuchsTreffer,
-      3
-    );
-  }
-
-  // --------------------------------------------
-  // QUEST 5
-  // 🎯 "Ich liebe Füchse" 2-mal schreiben
-  // --------------------------------------------
-
-  if (nachricht.includes("ich liebe füchse")) {
-    await questFortschritt(
-      username,
-      5,
-      1,
-      2
-    );
-  }
-}
-
-// =====================================================
-// PVP-SYSTEM
-// =====================================================
-
-async function streamelementsSenden(text) {
   try {
-    const channelResponse = await fetch(
-      "https://api.streamelements.com/kappa/v2/channels/me",
-      {
-        headers: {
-          Authorization: `Bearer ${STREAMELEMENTS_JWT}`,
-          Accept: "application/json",
-        },
-      }
+    const vorhandene = await supabase(
+      `fuchs_aktivitaet?select=spieler&spieler=eq.${encodeURIComponent(
+        username
+      )}&limit=1`
     );
 
-    if (!channelResponse.ok) {
-      console.error(
-        "❌ StreamElements Kanal konnte nicht geladen werden:",
-        channelResponse.status,
-        await channelResponse.text()
+    if (Array.isArray(vorhandene) && vorhandene.length > 0) {
+      await supabase(
+        `fuchs_aktivitaet?spieler=eq.${encodeURIComponent(username)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            letzte_aktivitaet: jetzt
+          })
+        }
       );
-      return;
-    }
-
-    const channel = await channelResponse.json();
-    const channelId = channel._id;
-
-    const response = await fetch(
-      `https://api.streamelements.com/kappa/v2/bot/${channelId}/say`,
-      {
+    } else {
+      await supabase("fuchs_aktivitaet", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${STREAMELEMENTS_JWT}`,
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: text,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      console.error(
-        "❌ StreamElements Chat-Fehler:",
-        response.status,
-        await response.text()
-      );
-      return;
-    }
-
-    console.log("📢 Bot-Nachricht gesendet:", text);
-  } catch (error) {
-    console.error(
-      "❌ Fehler beim Senden der Bot-Nachricht:",
-      error
-    );
-  }
-}
-
-
-async function pvpProfilAktualisieren(
-  username,
-  siege,
-  niederlagen
-) {
-  const profilResponse = await fetch(
-    `${SUPABASE_URL}/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
-      username
-    )}&select=pvp_siege,pvp_niederlagen`,
-    {
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-    }
-  );
-
-  if (!profilResponse.ok) {
-    console.error(
-      "❌ PvP-Profil konnte nicht geladen werden:",
-      await profilResponse.text()
-    );
-    return false;
-  }
-
-  const profile = await profilResponse.json();
-
-  if (!profile.length) {
-    const erstellen = await fetch(
-      `${SUPABASE_URL}/rest/v1/fuchsprofile`,
-      {
-        method: "POST",
-        headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          "Content-Type": "application/json",
-          Prefer: "return=minimal",
-        },
         body: JSON.stringify({
           spieler: username,
-          pvp_siege: siege,
-          pvp_niederlagen: niederlagen,
-        }),
-      }
-    );
+          letzte_aktivitaet: jetzt,
+          letzte_xp: null
+        })
+      });
+    }
 
-    return erstellen.ok;
+    console.log(`💾 Aktivität gespeichert: ${username}`);
+  } catch (error) {
+    console.error("❌ Aktivität speichern:", error.message);
+  }
+}
+
+function heute() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function questFortschrittHolen(username) {
+  const datum = heute();
+
+  const rows = await supabase(
+    `quest_fortschritt?select=quest_nummer,fortschritt&spieler=eq.${encodeURIComponent(
+      username
+    )}&datum=eq.${datum}&order=quest_nummer.asc`
+  );
+
+  const map = {};
+
+  for (const row of rows || []) {
+    map[row.quest_nummer] = Number(row.fortschritt || 0);
   }
 
-  const neueSiege =
-    (profile[0].pvp_siege || 0) + siege;
+  return map;
+}
 
-  const neueNiederlagen =
-    (profile[0].pvp_niederlagen || 0) + niederlagen;
+async function questsAnlegen(username) {
+  try {
+    await rpc("fuchs_quests_anlegen", {
+      spieler_name: username
+    });
+  } catch (error) {
+    console.error("❌ Quests anlegen:", error.message);
+  }
+}
 
-  const update = await fetch(
-    `${SUPABASE_URL}/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
+async function questsPruefen(username, text) {
+  try {
+    const nachricht = String(text ?? "").toLowerCase();
+
+    await questsAnlegen(username);
+
+    const vorher = await questFortschrittHolen(username);
+
+    await rpc("quest_nachricht_verarbeiten", {
+      spieler_name: username,
+      nachricht
+    });
+
+    const nachher = await questFortschrittHolen(username);
+
+    for (const nummer of [1, 2, 3, 4, 5]) {
+      const ziel = QUEST_ZIELE[nummer];
+      const alt = vorher[nummer] || 0;
+      const neu = Math.min(nachher[nummer] || 0, ziel);
+
+      if (alt < ziel && neu >= ziel) {
+        await streamelementsSenden(
+          `@${username} Quest erfolgreich erledigt! +10 FuchsXP 🦊`
+        );
+
+        console.log(
+          `✅ ${username} hat Quest ${nummer} abgeschlossen: ${QUEST_NAMEN[nummer]}`
+        );
+      }
+    }
+
+    const alleVorher = [1, 2, 3, 4, 5].every(
+      (nummer) => (vorher[nummer] || 0) >= QUEST_ZIELE[nummer]
+    );
+
+    const alleNachher = [1, 2, 3, 4, 5].every(
+      (nummer) => (nachher[nummer] || 0) >= QUEST_ZIELE[nummer]
+    );
+
+    if (!alleVorher && alleNachher) {
+      await streamelementsSenden(
+        `@${username} Du hast heute alle Aufgaben erledigt! Komm morgen wieder – dann warten neue Aufgaben auf dich! 🦊🏆`
+      );
+    }
+  } catch (error) {
+    console.error("❌ Quests prüfen:", error.message);
+  }
+}
+
+async function profilHolen(username) {
+  const rows = await supabase(
+    `fuchsprofile?select=spieler,xp,rudel,pvp_siege,pvp_niederlagen&spieler=eq.${encodeURIComponent(
       username
-    )}`,
-    {
-      method: "PATCH",
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      },
+    )}&limit=1`
+  );
+
+  return rows?.[0] || null;
+}
+
+async function profilAnlegen(username) {
+  try {
+    const profil = await profilHolen(username);
+
+    if (profil) {
+      return profil;
+    }
+
+    await supabase("fuchsprofile", {
+      method: "POST",
       body: JSON.stringify({
-        pvp_siege: neueSiege,
-        pvp_niederlagen: neueNiederlagen,
-        aktualisiert: new Date().toISOString(),
-      }),
-    }
-  );
+        spieler: username,
+        xp: 0,
+        rudel: null,
+        pvp_siege: 0,
+        pvp_niederlagen: 0
+      })
+    });
 
-  if (!update.ok) {
-    console.error(
-      "❌ PvP-Profil konnte nicht aktualisiert werden:",
-      await update.text()
-    );
-    return false;
+    return await profilHolen(username);
+  } catch (error) {
+    console.error("❌ Profil anlegen:", error.message);
+    return null;
   }
-
-  return true;
 }
 
+async function xpGeben(username, menge) {
+  try {
+    const neueXp = await rpc("fuchs_xp_hinzufuegen", {
+      spieler_name: username,
+      xp_menge: menge
+    });
 
-async function pvpVerarbeiten(username, text) {
-  const nachricht = text.trim();
+    console.log(`⭐ ${username}: +${menge} XP → ${neueXp}`);
 
-  // ---------------------------------------------------
-  // !pvp @Name
-  // ---------------------------------------------------
+    return Number(neueXp);
+  } catch (error) {
+    console.error("❌ XP geben:", error.message);
+    return null;
+  }
+}
 
-  const herausforderung =
-    nachricht.match(/^!pvp\s+@?([a-zA-Z0-9_]+)$/i);
+async function offeneKampfHolen(herausforderer, gegner) {
+  const rows = await supabase(
+    `offene_kampfe?select=id,herausforderer,gegner,erstellt&herausforderer=eq.${encodeURIComponent(
+      herausforderer
+    )}&gegner=eq.${encodeURIComponent(gegner)}&order=erstellt.desc&limit=1`
+  );
 
-  if (herausforderung) {
-    const gegner =
-      herausforderung[1].toLowerCase();
+  return rows?.[0] || null;
+}
 
-    if (gegner === username) {
-      return "❌ Du kannst dich nicht selbst herausfordern.";
-    }
-
-    const vorhandene = await fetch(
-      `${SUPABASE_URL}/rest/v1/offene_kampfe?herausforderer=eq.${encodeURIComponent(
-        username
-      )}&gegner=eq.${encodeURIComponent(
-        gegner
-      )}&select=id&limit=1`,
-      {
-        headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-      }
+async function pvpStarten(herausforderer, gegner) {
+  if (!gegner || herausforderer === gegner) {
+    await streamelementsSenden(
+      `@${herausforderer} Du kannst dich nicht selbst zum PvP herausfordern.`
     );
-
-    if (vorhandene.ok) {
-      const daten = await vorhandene.json();
-
-      if (daten.length) {
-        return `⚔️ @${gegner} wurde bereits von @${username} herausgefordert.`;
-      }
-    }
-
-    const anlegen = await fetch(
-      `${SUPABASE_URL}/rest/v1/offene_kampfe`,
-      {
-        method: "POST",
-        headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          "Content-Type": "application/json",
-          Prefer: "return=minimal",
-        },
-        body: JSON.stringify({
-          herausforderer: username,
-          gegner: gegner,
-          erstellt: new Date().toISOString(),
-        }),
-      }
-    );
-
-    if (!anlegen.ok) {
-      console.error(
-        "❌ PvP-Herausforderung konnte nicht gespeichert werden:",
-        await anlegen.text()
-      );
-
-      return "❌ Die PvP-Herausforderung konnte nicht gespeichert werden.";
-    }
-
-    return `⚔️ @${username} fordert @${gegner} zum PvP heraus! @${gegner} hat 60 Sekunden Zeit mit !annehmen zu antworten!`;
+    return;
   }
 
+  try {
+    await profilAnlegen(herausforderer);
+    await profilAnlegen(gegner);
 
-  // ---------------------------------------------------
-  // !annehmen
-  // ---------------------------------------------------
-
-  if (nachricht.toLowerCase() === "!annehmen") {
-    const seit =
-      new Date(
-        Date.now() - 60 * 1000
-      ).toISOString();
-
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/offene_kampfe?gegner=eq.${encodeURIComponent(
-        username
-      )}&erstellt=gte.${encodeURIComponent(
-        seit
-      )}&select=id,herausforderer,gegner,erstellt&order=erstellt.desc&limit=1`,
-      {
-        headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-      }
+    const bestehend = await offeneKampfHolen(
+      herausforderer,
+      gegner
     );
 
-    if (!response.ok) {
-      console.error(
-        "❌ PvP-Kampf konnte nicht geladen werden:",
-        await response.text()
+    if (bestehend) {
+      await streamelementsSenden(
+        `⚔️ @${herausforderer} Du hast @${gegner} bereits herausgefordert!`
+      );
+      return;
+    }
+
+    await supabase("offene_kampfe", {
+      method: "POST",
+      body: JSON.stringify({
+        herausforderer,
+        gegner,
+        erstellt: new Date().toISOString()
+      })
+    });
+
+    await streamelementsSenden(
+      `⚔️ @${herausforderer} fordert @${gegner} zum PvP heraus! @${gegner} hat 60 Sekunden Zeit mit !annehmen zu antworten!`
+    );
+  } catch (error) {
+    console.error("❌ PvP starten:", error.message);
+  }
+}
+
+async function pvpAnnehmen(gegner) {
+  try {
+    const rows = await supabase(
+      `offene_kampfe?select=id,herausforderer,gegner,erstellt&gegner=eq.${encodeURIComponent(
+        gegner
+      )}&order=erstellt.asc&limit=1`
+    );
+
+    const kampf = rows?.[0];
+
+    if (!kampf) {
+      await streamelementsSenden(
+        `@${gegner} Es gibt keinen offenen PvP-Kampf für dich.`
+      );
+      return;
+    }
+
+    const erstellt = new Date(kampf.erstellt).getTime();
+    const jetzt = Date.now();
+
+    if (jetzt - erstellt > 60_000) {
+      await supabase(
+        `offene_kampfe?id=eq.${kampf.id}`,
+        {
+          method: "DELETE",
+          prefer: "return=minimal"
+        }
       );
 
-      return "❌ Der PvP-Kampf konnte nicht geladen werden.";
+      await streamelementsSenden(
+        `@${gegner} Die 60 Sekunden sind leider vorbei. Die Herausforderung ist abgelaufen.`
+      );
+
+      return;
     }
 
-    const kaempfe = await response.json();
-
-    if (!kaempfe.length) {
-      return "❌ Du hast keine gültige PvP-Herausforderung in den letzten 60 Sekunden.";
-    }
-
-    const kampf = kaempfe[0];
-
-    // Kampf sofort aus offener Liste löschen
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/offene_kampfe?id=eq.${kampf.id}`,
+    await supabase(
+      `offene_kampfe?id=eq.${kampf.id}`,
       {
         method: "DELETE",
-        headers: {
-          apikey: SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        },
+        prefer: "return=minimal"
       }
     );
 
-    const herausforderer =
-      kampf.herausforderer;
+    const spieler = [
+      kampf.herausforderer,
+      kampf.gegner
+    ];
 
-    const gegner =
-      kampf.gegner;
+    const gewinnerIndex = Math.floor(Math.random() * 2);
 
-    // Zufälliger Kampfausgang
-    const herausfordererGewinnt =
-      Math.random() < 0.5;
+    const gewinner = spieler[gewinnerIndex];
+    const verlierer = spieler[1 - gewinnerIndex];
 
-    const gewinner =
-      herausfordererGewinnt
-        ? herausforderer
-        : gegner;
+    await profilAnlegen(gewinner);
+    await profilAnlegen(verlierer);
 
-    const verlierer =
-      herausfordererGewinnt
-        ? gegner
-        : herausforderer;
+    const gewinnerProfil = await profilHolen(gewinner);
+    const verliererProfil = await profilHolen(verlierer);
 
-    await pvpProfilAktualisieren(
-      gewinner,
-      1,
-      0
+    await supabase(
+      `fuchsprofile?spieler=eq.${encodeURIComponent(gewinner)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          pvp_siege:
+            Number(gewinnerProfil?.pvp_siege || 0) + 1,
+          aktualisiert: new Date().toISOString()
+        }),
+        prefer: "return=minimal"
+      }
     );
 
-    await pvpProfilAktualisieren(
-      verlierer,
-      0,
-      1
+    await supabase(
+      `fuchsprofile?spieler=eq.${encodeURIComponent(verlierer)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          pvp_niederlagen:
+            Number(verliererProfil?.pvp_niederlagen || 0) + 1,
+          aktualisiert: new Date().toISOString()
+        }),
+        prefer: "return=minimal"
+      }
     );
 
-    await xpHinzufuegen(
-      gewinner,
-      100
-    );
+    await xpGeben(gewinner, 100);
 
-    return `⚔️ PVP-KAMPF! @${herausforderer} 🆚 @${gegner} | 🏆 Gewinner: @${gewinner}! +100 FuchsXP 🦊 | 💀 @${verlierer} verliert den Kampf.`;
+    await streamelementsSenden(
+      `⚔️ PVP-KAMPF! @${kampf.herausforderer} 🆚 @${kampf.gegner} | 🏆 Gewinner: @${gewinner}! +100 FuchsXP 🦊 | 💀 @${verlierer} verliert den Kampf.`
+    );
+  } catch (error) {
+    console.error("❌ PvP annehmen:", error.message);
   }
-
-  return null;
 }
-// =====================================================
-// CHAT-NACHRICHT VERARBEITEN
-// =====================================================
 
 async function chatVerarbeiten(message) {
-
-  console.log(
-    "📡 StreamElements Nachricht:",
-    JSON.stringify(message)
-  );
-
-
-  // ---------------------------------------------------
-  // StreamElements Antwort
-  // ---------------------------------------------------
-
-  if (message.type === "response") {
-
+  try {
     console.log(
-      "📨 StreamElements Antwort:",
+      "📡 StreamElements Nachricht:",
       JSON.stringify(message)
     );
 
-    return;
-  }
+    if (message.type === "response") return;
+    if (message.type !== "message") return;
+    if (message.topic !== "channel.chat.message") return;
 
+    if (message.room) {
+      streamElementsRoomId = message.room;
+    }
 
-  // ---------------------------------------------------
-  // Nur echte Nachrichten
-  // ---------------------------------------------------
+    const data = message.data;
 
-  if (message.type !== "message") {
-    return;
-  }
+    const usernameRaw =
+      data?.chatter_user_name ||
+      data?.chatter_user_login ||
+      data?.sender?.user_name ||
+      data?.sender?.username ||
+      data?.username ||
+      data?.user?.name;
 
+    if (!usernameRaw) return;
 
-  // ---------------------------------------------------
-  // Topic prüfen
-  // ---------------------------------------------------
-
-  if (message.topic !== "channel.chat.message") {
-
-    console.log(
-      "ℹ️ Nachricht mit anderem Topic:",
-      message.topic
-    );
-
-    return;
-  }
-
-
-  const data = message.data;
-
-
-  // ---------------------------------------------------
-  // Benutzername finden
-  // ---------------------------------------------------
-
-  const usernameRaw =
-    data?.chatter_user_name ||
-    data?.chatter_user_login ||
-    data?.sender?.user_name ||
-    data?.sender?.username ||
-    data?.username ||
-    data?.user?.name;
-if (!usernameRaw) return;
-if (usernameRaw.toLowerCase() === "streamelements") return;
-
-  if (!usernameRaw) {
-
-    console.log(
-      "⚠️ Chat-Nachricht ohne erkannten Benutzer."
-    );
-
-    return;
-  }
-
-
-  // ---------------------------------------------------
-  // Benutzername vereinheitlichen
-  // ---------------------------------------------------
-
-  const username =
-    usernameRaw
+    const username = String(usernameRaw)
       .trim()
       .toLowerCase();
 
+    const text =
+      data?.message?.text ||
+      data?.text ||
+      data?.content ||
+      "";
 
-  // ---------------------------------------------------
-  // Nachrichtentext
-  // ---------------------------------------------------
+    console.log(`💬 Aktivität erkannt: ${username}`);
+    console.log(`📝 Nachricht: ${text}`);
 
-  const text =
-    data?.message?.text ||
-    data?.text ||
-    "";
+    await profilAnlegen(username);
+    await aktivitaetSpeichern(username);
+    await questsPruefen(username, text);
 
+    const nachricht = String(text).trim();
 
-  console.log(
-    `💬 Aktivität erkannt: ${username}`
-  );
+    const pvpMatch = nachricht.match(
+      /^!pvp\s+@?([a-zA-Z0-9_]+)$/i
+    );
 
-  console.log(
-    `📝 Nachricht: ${text}`
-  );
+    if (pvpMatch) {
+      await pvpStarten(
+        username,
+        pvpMatch[1].toLowerCase()
+      );
+      return;
+    }
 
-
-  // ---------------------------------------------------
-  // Aktivität speichern
-  // ---------------------------------------------------
-// ---------------------------------------------------
-// PVP prüfen
-// ---------------------------------------------------
-
-const pvpAntwort = await pvpVerarbeiten(
-  username,
-  text
-);
-
-if (pvpAntwort) {
-  await streamelementsSenden(pvpAntwort);
-  return;
+    if (/^!annehmen$/i.test(nachricht)) {
+      await pvpAnnehmen(username);
+      return;
+    }
+  } catch (error) {
+    console.error(
+      "❌ Chat-Verarbeitung:",
+      error.message
+    );
+  }
 }
-  await aktivitaetSpeichern(username);
-
-
-  // ---------------------------------------------------
-  // DAILY QUESTS prüfen
-  // ---------------------------------------------------
-
-  await questsPruefen(
-    username,
-    text
-  );
-}
-
-
-// =====================================================
-// STREAMELEMENTS VERBINDUNG
-// =====================================================
 
 function verbinden() {
+  if (!STREAMELEMENTS_JWT) {
+    console.error(
+      "❌ Keine STREAMELEMENTS_JWT – WebSocket startet nicht."
+    );
+    return;
+  }
 
-  console.log(
-    "🔌 Verbinde mit StreamElements..."
+  if (ws) {
+    try {
+      ws.close();
+    } catch {}
+  }
+
+  console.log("🔌 Verbinde mit StreamElements...");
+
+  ws = new WebSocket(
+    "wss://astro.streamelements.com"
   );
 
-
-  const ws =
-    new WebSocket(
-      "wss://astro.streamelements.com/"
-    );
-
-
-  // ---------------------------------------------------
-  // Verbindung geöffnet
-  // ---------------------------------------------------
-
   ws.on("open", () => {
-
     console.log(
-      "🦊 Mit StreamElements verbunden."
-    );
-
-
-    const subscribeNachricht = {
-      type: "subscribe",
-
-      nonce: crypto.randomUUID(),
-
-      data: {
-        topic: "channel.chat.message",
-
-        token: STREAMELEMENTS_JWT,
-
-        token_type: "jwt",
-      },
-    };
-
-
-    console.log(
-      "📤 Sende StreamElements Subscribe..."
-    );
-
-
-    ws.send(
-      JSON.stringify(
-        subscribeNachricht
-      )
+      "🟢 StreamElements WebSocket verbunden."
     );
   });
 
-
-  // ---------------------------------------------------
-  // Nachrichten empfangen
-  // ---------------------------------------------------
-
-  ws.on("message", (raw) => {
-
+  ws.on("message", async (raw) => {
     try {
-
-      const message =
-        JSON.parse(
-          raw.toString()
-        );
-
-
-      console.log(
-        "📥 RAW STREAM ELEMENTS:",
-        JSON.stringify(message)
+      const message = JSON.parse(
+        raw.toString()
       );
 
+      console.log(
+        "📨 WebSocket:",
+        message.type
+      );
 
-      chatVerarbeiten(message);
+      if (message.type === "welcome") {
+        const subscribeNachricht = {
+          type: "subscribe",
+          nonce: crypto.randomUUID(),
+          data: {
+            topic: "channel.chat.message",
+            token: STREAMELEMENTS_JWT,
+            token_type: "jwt"
+          }
+        };
 
+        ws.send(
+          JSON.stringify(
+            subscribeNachricht
+          )
+        );
+
+        console.log(
+          "📡 Chat-Topic abonniert."
+        );
+
+        return;
+      }
+
+      await chatVerarbeiten(message);
     } catch (error) {
-
       console.error(
-        "❌ Fehler beim Verarbeiten:",
-        error
+        "❌ WebSocket Nachricht:",
+        error.message
       );
     }
   });
 
-
-  // ---------------------------------------------------
-  // Verbindung geschlossen
-  // ---------------------------------------------------
+  ws.on("error", (error) => {
+    console.error(
+      "❌ StreamElements WebSocket:",
+      error.message
+    );
+  });
 
   ws.on("close", () => {
-
     console.log(
       "⚠️ StreamElements-Verbindung beendet."
     );
 
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+    }
 
-    console.log(
-      "🔄 Neuer Verbindungsversuch in 5 Sekunden..."
-    );
+    reconnectTimer = setTimeout(() => {
+      console.log(
+        "🔄 Neuer Verbindungsversuch..."
+      );
 
-
-    setTimeout(
-      verbinden,
-      5000
-    );
-  });
-
-
-  // ---------------------------------------------------
-  // WebSocket Fehler
-  // ---------------------------------------------------
-
-  ws.on("error", (error) => {
-
-    console.error(
-      "❌ WebSocket-Fehler:",
-      error.message
-    );
+      verbinden();
+    }, 5000);
   });
 }
-// =============================================
-// RENDER WEB PORT
-// =============================================
 
-import("node:http").then(({ createServer }) => {
-  const server = createServer((req, res) => {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("🦊 Fuchs-XP-Bot läuft!");
-  });
+const server = http.createServer(
+  (req, res) => {
+    res.writeHead(200, {
+      "Content-Type":
+        "text/plain; charset=utf-8"
+    });
 
-  server.listen(
-    process.env.PORT || 3000,
-    "0.0.0.0",
-    () => {
-      console.log("🌐 Web-Port geöffnet.");
-    }
-  );
-});
+    res.end(
+      "🦊 Fuchs-XP-Bot läuft!"
+    );
+  }
+);
 
-// =====================================================
-// BOT STARTEN
-// =====================================================
+server.listen(
+  PORT,
+  "0.0.0.0",
+  () => {
+    console.log(
+      `🌐 Web-Port geöffnet auf ${PORT}.`
+    );
+  }
+);
 
 verbinden();
 
