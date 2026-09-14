@@ -64,14 +64,14 @@ async function rpc(functionName, body = {}) {
 async function streamelementsSenden(text) {
   if (!STREAMELEMENTS_JWT) {
     console.log(
-      "⚠️ StreamElements JWT fehlt."
+      "â ï¸ StreamElements JWT fehlt."
     );
     return false;
   }
 
   if (!streamElementsRoomId) {
     console.log(
-      "⚠️ StreamElements Room-ID fehlt."
+      "â ï¸ StreamElements Room-ID fehlt."
     );
     return false;
   }
@@ -99,20 +99,20 @@ async function streamelementsSenden(text) {
 
     if (!response.ok) {
       console.error(
-        `❌ StreamElements ${response.status}: ${body}`
+        `â StreamElements ${response.status}: ${body}`
       );
       return false;
     }
 
     console.log(
-      `📤 StreamElements: ${text}`
+      `ð¤ StreamElements: ${text}`
     );
 
     return true;
 
   } catch (error) {
     console.error(
-      "❌ StreamElements senden:",
+      "â StreamElements senden:",
       error.message
     );
 
@@ -122,7 +122,7 @@ async function streamelementsSenden(text) {
 
 
 // =====================================================
-// AKTIVITÄT
+// AKTIVITÃT
 // =====================================================
 
 async function aktivitaetSpeichern(username) {
@@ -144,12 +144,12 @@ async function aktivitaetSpeichern(username) {
     );
 
     console.log(
-      `💾 Aktivität gespeichert: ${username}`
+      `ð¾ AktivitÃ¤t gespeichert: ${username}`
     );
 
   } catch (error) {
     console.error(
-      "❌ Aktivität speichern:",
+      "â AktivitÃ¤t speichern:",
       error.message
     );
   }
@@ -170,7 +170,7 @@ async function questsAnlegen(username) {
     );
   } catch (error) {
     console.error(
-      "❌ Normale Quests anlegen:",
+      "â Normale Quests anlegen:",
       error.message
     );
   }
@@ -193,7 +193,7 @@ async function questFortschrittHolen(username) {
 
   } catch (error) {
     console.error(
-      "❌ Quest-Fortschritt holen:",
+      "â Quest-Fortschritt holen:",
       error.message
     );
 
@@ -244,7 +244,7 @@ async function questsPruefen(username, text) {
     };
 
 
-    // Prüfen, ob eine normale Quest
+    // PrÃ¼fen, ob eine normale Quest
     // gerade abgeschlossen wurde
 
     for (const quest of nachher) {
@@ -268,13 +268,13 @@ async function questsPruefen(username, text) {
       ) {
 
         await streamelementsSenden(
-          `@${username} Quest erfolgreich erledigt! +10 FuchsXP 🦊`
+          `@${username} Quest erfolgreich erledigt! +10 FuchsXP ð¦`
         );
       }
     }
 
 
-    // Prüfen, ob alle 5 normalen
+    // PrÃ¼fen, ob alle 5 normalen
     // Quests fertig sind
 
     const alleFertig =
@@ -315,14 +315,14 @@ async function questsPruefen(username, text) {
     ) {
 
       await streamelementsSenden(
-        `@${username} Du hast heute alle Aufgaben erledigt! Komm morgen wieder – dann warten neue Aufgaben auf dich! 🦊🏆`
+        `@${username} Du hast heute alle Aufgaben erledigt! Komm morgen wieder â dann warten neue Aufgaben auf dich! ð¦ð`
       );
     }
 
   } catch (error) {
 
     console.error(
-      "❌ Normale Quests:",
+      "â Normale Quests:",
       error.message
     );
   }
@@ -330,90 +330,79 @@ async function questsPruefen(username, text) {
 
 
 // =====================================================
-// PERSÖNLICHE QUESTS
+// PERSÃNLICHE QUESTS
 // =====================================================
 
 // Reihenfolge:
-//
 // 6 = Gaming
 // 7 = Twitch
 // 8 = Rudel
 // 9 = Hallo
 // 10 = Mega
 //
-// Immer nur die ERSTE offene Quest
-// ist für den Spieler aktiv.
+// WICHTIG:
+// Immer nur die ERSTE offene persÃ¶nliche Quest zÃ¤hlt.
+// Nach Abschluss wird NICHT automatisch die nÃ¤chste Quest angezeigt.
+// Der Spieler schreibt danach wieder !quest.
 
 const persoenlicheQuests = {
-
   6: {
     wort: "gaming",
     ziel: 2,
     text:
-      "🎮 Deine persönliche Aufgabe: Schreibe „Gaming“ 2-mal innerhalb von 60 Sekunden!"
+      "ð® Deine persÃ¶nliche Aufgabe ist: Schreibe âGamingâ 2-mal innerhalb von 60 Sekunden."
   },
 
   7: {
     wort: "twitch",
     ziel: 2,
     text:
-      "💜 Deine persönliche Aufgabe: Schreibe „Twitch“ 2-mal innerhalb von 60 Sekunden!"
+      "ð Deine persÃ¶nliche Aufgabe ist: Schreibe âTwitchâ 2-mal innerhalb von 60 Sekunden."
   },
 
   8: {
     wort: "rudel",
     ziel: 2,
     text:
-      "🐺 Deine persönliche Aufgabe: Schreibe „Rudel“ 2-mal innerhalb von 60 Sekunden!"
+      "ðº Deine persÃ¶nliche Aufgabe ist: Schreibe âRudelâ 2-mal innerhalb von 60 Sekunden."
   },
 
   9: {
     wort: "hallo",
     ziel: 3,
     text:
-      "👋 Deine persönliche Aufgabe: Schreibe „Hallo“ 3-mal innerhalb von 60 Sekunden!"
+      "ð Deine persÃ¶nliche Aufgabe ist: Schreibe âHalloâ 3-mal innerhalb von 60 Sekunden."
   },
 
   10: {
     wort: "mega",
     ziel: 2,
     text:
-      "⭐ Deine persönliche Aufgabe: Schreibe „Mega“ 2-mal innerhalb von 60 Sekunden!"
-  },
-
+      "â­ Deine persÃ¶nliche Aufgabe ist: Schreibe âMegaâ 2-mal innerhalb von 60 Sekunden."
+  }
 };
 
 
-async function persoenlicheQuestsAnlegen(
-  username
-) {
-
+async function persoenlicheQuestsAnlegen(username) {
   try {
-
     await rpc(
       "persoenliche_quest_pruefen",
       {
         spieler_name: username,
-        nachricht: "",
+        nachricht: ""
       }
     );
-
   } catch (error) {
-
     console.error(
-      "❌ Persönliche Quests anlegen:",
+      "â PersÃ¶nliche Quests anlegen:",
       error.message
     );
   }
 }
 
 
-async function persoenlicheQuestsHolen(
-  username
-) {
-
+async function persoenlicheQuestsHolen(username) {
   try {
-
     const datum =
       new Date()
         .toISOString()
@@ -427,11 +416,9 @@ async function persoenlicheQuestsHolen(
       `&quest_nummer=lte.10` +
       `&order=quest_nummer.asc`
     );
-
   } catch (error) {
-
     console.error(
-      "❌ Persönliche Quests holen:",
+      "â PersÃ¶nliche Quests holen:",
       error.message
     );
 
@@ -444,48 +431,32 @@ async function persoenlicheQuestsHolen(
 // !QUEST
 // =====================================================
 
-async function persoenlicheQuestAnzeigen(
-  username
-) {
-
+async function persoenlicheQuestAnzeigen(username) {
   try {
-
-    await persoenlicheQuestsAnlegen(
-      username
-    );
+    await persoenlicheQuestsAnlegen(username);
 
     const quests =
-      await persoenlicheQuestsHolen(
-        username
-      );
+      await persoenlicheQuestsHolen(username);
 
     if (!quests.length) {
-
       await streamelementsSenden(
-        `@${username} 🎯 Deine persönlichen Aufgaben konnten noch nicht angelegt werden.`
+        `@${username} ð¯ Deine persÃ¶nlichen Aufgaben konnten noch nicht angelegt werden.`
       );
-
       return;
     }
 
-
-    // Nur die erste offene Aufgabe anzeigen
-
+    // Nur die erste offene Quest anzeigen.
     const aktive =
       quests.find(
         q => !q.abgeschlossen
       );
 
-
     if (!aktive) {
-
       await streamelementsSenden(
-        `@${username} 🎉 Du hast heute alle persönlichen Aufgaben geschafft! Komm morgen wieder für neue Aufgaben! 🦊🏆`
+        `@${username} ð Du hast heute alle persÃ¶nlichen Aufgaben geschafft! Komm morgen wieder fÃ¼r neue Aufgaben! ð¦ð`
       );
-
       return;
     }
-
 
     const questNummer =
       Number(
@@ -497,24 +468,22 @@ async function persoenlicheQuestAnzeigen(
         questNummer
       ];
 
-
-    if (!quest) return;
-
+    if (!quest) {
+      return;
+    }
 
     const fortschritt =
       Number(
         aktive.fortschritt || 0
       );
 
-
     await streamelementsSenden(
-      `@${username} 🎯 Deine persönliche Aufgabe ist: ${quest.text} Fortschritt: ${fortschritt}/${quest.ziel}`
+      `@${username} ð¯ ${quest.text} â ${fortschritt}/${quest.ziel}`
     );
 
   } catch (error) {
-
     console.error(
-      "❌ Persönliche Quest anzeigen:",
+      "â PersÃ¶nliche Quest anzeigen:",
       error.message
     );
   }
@@ -522,152 +491,93 @@ async function persoenlicheQuestAnzeigen(
 
 
 // =====================================================
-// PERSÖNLICHE QUEST PRÜFEN
+// PERSÃNLICHE QUEST PRÃFEN
 // =====================================================
 
-async function persoenlicheQuestPruefen(
-  username,
-  text
-) {
-
+async function persoenlicheQuestPruefen(username, text) {
   try {
-
-    await persoenlicheQuestsAnlegen(
-      username
-    );
-
+    await persoenlicheQuestsAnlegen(username);
 
     let quests =
-      await persoenlicheQuestsHolen(
-        username
-      );
+      await persoenlicheQuestsHolen(username);
 
+    if (!quests.length) {
+      return;
+    }
 
-    if (!quests.length) return;
-
-
-    // Nur die erste offene Quest zählt
-
+    // Nur die erste offene Quest zÃ¤hlt.
     const aktive =
       quests.find(
         q => !q.abgeschlossen
       );
 
-
-    if (!aktive) return;
-
+    if (!aktive) {
+      return;
+    }
 
     const nummer =
       Number(
         aktive.quest_nummer
       );
 
-
     const quest =
       persoenlicheQuests[
         nummer
       ];
 
-
-    if (!quest) return;
-
+    if (!quest) {
+      return;
+    }
 
     const vorher =
       Number(
         aktive.fortschritt || 0
       );
 
-
-    // Nachricht an Datenbank senden
-
+    // Nachricht an die Datenbank senden.
     await rpc(
       "persoenliche_quest_pruefen",
       {
         spieler_name: username,
-        nachricht: text,
+        nachricht: text
       }
     );
 
-
     quests =
-      await persoenlicheQuestsHolen(
-        username
-      );
-
+      await persoenlicheQuestsHolen(username);
 
     const danach =
       quests.find(
         q =>
-          Number(q.quest_nummer)
-          === nummer
+          Number(q.quest_nummer) === nummer
       );
 
-
-    if (!danach) return;
-
+    if (!danach) {
+      return;
+    }
 
     const neu =
       Number(
         danach.fortschritt || 0
       );
 
-
     // Quest gerade abgeschlossen?
-
     if (
       neu >= quest.ziel &&
       vorher < quest.ziel
     ) {
-
       await streamelementsSenden(
-        `@${username} ✅ Deine persönliche Aufgabe ist erfolgreich abgeschlossen! +10 FuchsXP 🦊`
+        `@${username} â Deine persÃ¶nliche Aufgabe ist erfolgreich abgeschlossen! +10 FuchsXP ð¦`
       );
 
-
-      // Nächste persönliche Quest
-
-      const naechste =
-        quests.find(
-          q =>
-            !q.abgeschlossen &&
-            Number(q.quest_nummer)
-              > nummer
-        );
-
-
-      if (naechste) {
-
-        const naechsteNummer =
-          Number(
-            naechste.quest_nummer
-          );
-
-        const naechsteQuest =
-          persoenlicheQuests[
-            naechsteNummer
-          ];
-
-
-        if (naechsteQuest) {
-
-          await streamelementsSenden(
-            `@${username} 🎯 Deine nächste persönliche Aufgabe ist: ${naechsteQuest.text}`
-          );
-        }
-
-
-      } else {
-
-        await streamelementsSenden(
-          `@${username} 🎉 Du hast heute alle persönlichen Aufgaben geschafft! Komm morgen wieder für neue Aufgaben! 🦊🏆`
-        );
-      }
+      // WICHTIG:
+      // Hier wird KEINE nÃ¤chste Quest automatisch angezeigt.
+      // Der Spieler muss dafÃ¼r wieder !quest schreiben.
     }
 
   } catch (error) {
-
     console.error(
-      "❌ Persönliche Quest:",
+      "â PersÃ¶nliche Quest:",
       error.message
     );
   }
@@ -697,7 +607,7 @@ async function profil(username) {
     if (!p) {
 
       return (
-        `🦊 ${username} hat noch kein Fuchsprofil.`
+        `ð¦ ${username} hat noch kein Fuchsprofil.`
       );
     }
 
@@ -707,29 +617,29 @@ async function profil(username) {
 
 
     let level =
-      "🐾 Fuchsbaby";
+      "ð¾ Fuchsbaby";
 
 
     if (xp >= 100)
-      level = "🦊 Jungfuchs";
+      level = "ð¦ Jungfuchs";
 
     if (xp >= 250)
-      level = "🍂 Waldläufer";
+      level = "ð WaldlÃ¤ufer";
 
     if (xp >= 500)
-      level = "🌲 Rudelfuchs";
+      level = "ð² Rudelfuchs";
 
     if (xp >= 1000)
-      level = "🔥 Fuchsjäger";
+      level = "ð¥ FuchsjÃ¤ger";
 
     if (xp >= 2000)
-      level = "👑 Alphafuchs";
+      level = "ð Alphafuchs";
 
     if (xp >= 5000)
-      level = "✨ Fuchslegende";
+      level = "â¨ Fuchslegende";
 
     if (xp >= 10000)
-      level = "🦊🏆 Fuchsmeister";
+      level = "ð¦ð Fuchsmeister";
 
 
     const grenzen = [
@@ -756,19 +666,19 @@ async function profil(username) {
 
 
     return (
-      `🦊 ${username}` +
-      ` | ⭐ ${xp} FuchsXP` +
-      ` | 🏆 Level ${level}` +
-      ` | 🐺 Rudel: ${p.rudel || "noch nicht gewählt"}` +
-      ` | ⚔️ Siege: ${p.pvp_siege || 0}` +
-      ` | 💀 Niederlagen: ${p.pvp_niederlagen || 0}` +
-      ` | 📈 Noch ${bis} XP bis zum nächsten Level`
+      `ð¦ ${username}` +
+      ` | â­ ${xp} FuchsXP` +
+      ` | ð Level ${level}` +
+      ` | ðº Rudel: ${p.rudel || "noch nicht gewÃ¤hlt"}` +
+      ` | âï¸ Siege: ${p.pvp_siege || 0}` +
+      ` | ð Niederlagen: ${p.pvp_niederlagen || 0}` +
+      ` | ð Noch ${bis} XP bis zum nÃ¤chsten Level`
     );
 
   } catch (error) {
 
     console.error(
-      "❌ Profil:",
+      "â Profil:",
       error.message
     );
 
@@ -789,16 +699,16 @@ async function rudelwahl(
   const map = {
 
     feuer:
-      "🔥 Feuerrudel",
+      "ð¥ Feuerrudel",
 
     wasser:
-      "🌊 Wasserrudel",
+      "ð Wasserrudel",
 
     wald:
-      "🌲 Waldrudel",
+      "ð² Waldrudel",
 
     ice:
-      "🧊 ICErudel",
+      "ð§ ICErudel",
 
   };
 
@@ -813,7 +723,7 @@ async function rudelwahl(
   if (!gewaehlt) {
 
     return (
-      `@${username} Bitte wähle: ` +
+      `@${username} Bitte wÃ¤hle: ` +
       `Feuer, Wasser, Wald oder ICE.`
     );
   }
@@ -838,13 +748,13 @@ async function rudelwahl(
 
 
     return (
-      `@${username} 🐺 Du bist jetzt im ${gewaehlt}!`
+      `@${username} ðº Du bist jetzt im ${gewaehlt}!`
     );
 
   } catch (error) {
 
     console.error(
-      "❌ Rudelwahl:",
+      "â Rudelwahl:",
       error.message
     );
 
@@ -896,7 +806,7 @@ async function pvpStart(
 
 
   return (
-    `⚔️ @${username} fordert @${gegner} zum PvP heraus! ` +
+    `âï¸ @${username} fordert @${gegner} zum PvP heraus! ` +
     `@${gegner} hat 60 Sekunden Zeit mit !annehmen zu antworten!`
   );
 }
@@ -1000,7 +910,7 @@ async function pvpAnnehmen(
   } catch (error) {
 
     console.error(
-      "❌ PvP-Sieg:",
+      "â PvP-Sieg:",
       error.message
     );
   }
@@ -1040,17 +950,17 @@ async function pvpAnnehmen(
   } catch (error) {
 
     console.error(
-      "❌ PvP-Niederlage:",
+      "â PvP-Niederlage:",
       error.message
     );
   }
 
 
   return (
-    `⚔️ PVP-KAMPF! ` +
-    `@${kampf.herausforderer} 🆚 @${username} | ` +
-    `🏆 Gewinner: @${gewinner}! +100 FuchsXP 🦊 | ` +
-    `💀 @${verlierer} verliert den Kampf.`
+    `âï¸ PVP-KAMPF! ` +
+    `@${kampf.herausforderer} ð @${username} | ` +
+    `ð Gewinner: @${gewinner}! +100 FuchsXP ð¦ | ` +
+    `ð @${verlierer} verliert den Kampf.`
   );
 }
 
@@ -1064,7 +974,7 @@ async function chatVerarbeiten(
 ) {
 
   console.log(
-    "📡 StreamElements Nachricht:",
+    "ð¡ StreamElements Nachricht:",
     JSON.stringify(message)
   );
 
@@ -1099,7 +1009,7 @@ async function chatVerarbeiten(
       message.room;
 
     console.log(
-      `🏠 StreamElements Room-ID: ${streamElementsRoomId}`
+      `ð  StreamElements Room-ID: ${streamElementsRoomId}`
     );
   }
 
@@ -1135,12 +1045,12 @@ async function chatVerarbeiten(
 
 
   console.log(
-    `💬 Aktivität erkannt: ${username}`
+    `ð¬ AktivitÃ¤t erkannt: ${username}`
   );
 
 
   console.log(
-    `📝 Nachricht: ${text}`
+    `ð Nachricht: ${text}`
   );
 
 
@@ -1292,7 +1202,7 @@ async function chatVerarbeiten(
 
 
   // =================================================
-  // PERSÖNLICHE QUEST
+  // PERSÃNLICHE QUEST
   // =================================================
 
   await persoenlicheQuestPruefen(
@@ -1322,7 +1232,7 @@ function verbinden() {
     () => {
 
       console.log(
-        "🔌 StreamElements WebSocket verbunden."
+        "ð StreamElements WebSocket verbunden."
       );
     }
   );
@@ -1340,7 +1250,7 @@ function verbinden() {
           );
 
 
-        // StreamElements Begrüßung
+        // StreamElements BegrÃ¼Ãung
 
         if (
           message.type ===
@@ -1379,7 +1289,7 @@ function verbinden() {
 
 
           console.log(
-            "📡 StreamElements Chat-Topic abonniert."
+            "ð¡ StreamElements Chat-Topic abonniert."
           );
 
 
@@ -1394,7 +1304,7 @@ function verbinden() {
       } catch (error) {
 
         console.error(
-          "❌ WebSocket Nachricht:",
+          "â WebSocket Nachricht:",
           error.message
         );
       }
@@ -1407,7 +1317,7 @@ function verbinden() {
     error => {
 
       console.error(
-        "❌ StreamElements WebSocket:",
+        "â StreamElements WebSocket:",
         error.message
       );
     }
@@ -1419,12 +1329,12 @@ function verbinden() {
     () => {
 
       console.log(
-        "⚠️ StreamElements-Verbindung beendet."
+        "â ï¸ StreamElements-Verbindung beendet."
       );
 
 
       console.log(
-        "🔄 Neuer Verbindungsversuch in 5 Sekunden..."
+        "ð Neuer Verbindungsversuch in 5 Sekunden..."
       );
 
 
@@ -1455,7 +1365,7 @@ const server =
 
 
       res.end(
-        "🦊 Fuchs-XP-Bot läuft!"
+        "ð¦ Fuchs-XP-Bot lÃ¤uft!"
       );
     }
   );
@@ -1467,7 +1377,7 @@ server.listen(
   () => {
 
     console.log(
-      `🌐 Web-Port geöffnet auf ${
+      `ð Web-Port geÃ¶ffnet auf ${
         process.env.PORT || 10000
       }.`
     );
@@ -1483,6 +1393,7 @@ verbinden();
 
 
 console.log(
-  "🦊 Fuchs-XP-Bot gestartet!"
+  "ð¦ Fuchs-XP-Bot gestartet!"
 );
     
+
