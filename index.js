@@ -274,8 +274,6 @@ async function questFortschritt(username, questNummer, menge, ziel) {
 
 async function questsPruefen(username, text) {
   const nachricht = text.toLowerCase();
-async function questsPruefen(username, text) {
-  const nachricht = String(text || "").toLowerCase();
 
   // --------------------------------------------
   // QUEST 1
