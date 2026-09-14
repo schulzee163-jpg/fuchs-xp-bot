@@ -478,19 +478,23 @@ async function chatVerarbeiten(message) {
       data?.user?.name;
 
     if (!usernameRaw) return;
+const username = String(usernameRaw)
+  .trim()
+  .toLowerCase();
 
-    const username = String(usernameRaw)
-      .trim()
-      .toLowerCase();
+// Eigene StreamElements-Nachrichten ignorieren
+if (username === "streamelements") {
+  console.log("🤖 Eigene StreamElements-Nachricht ignoriert.");
+  return;
+}
 
-    const text =
-      data?.message?.text ||
-      data?.text ||
-      data?.content ||
-      "";
+const text =
+  data?.message?.text ||
+  data?.text ||
+  data?.content ||
+  "";
 
-    console.log(`💬 Aktivität erkannt: ${username}`);
-    console.log(`📝 Nachricht: ${text}`);
+console.log(`💬 Aktivität erkannt: ${username}`);
 
     await profilAnlegen(username);
     await aktivitaetSpeichern(username);
