@@ -253,18 +253,32 @@ async function questFortschritt(username, questNummer, menge, ziel) {
   console.log(
     `📜 ${username} Quest ${questNummer}: ${neuerFortschritt}/${ziel}`
   );
+// Quest gerade abgeschlossen
+if (
+  alterFortschritt < ziel &&
+  neuerFortschritt >= ziel
+) {
+  await xpHinzufuegen(username, 10);
 
-  // Quest gerade abgeschlossen
-  if (
-    alterFortschritt < ziel &&
-    neuerFortschritt >= ziel
-  ) {
-    await xpHinzufuegen(username, 10);
+  const questNamen = {
+    1: "💬 Nachrichten schreiben",
+    2: "😀 Emojis benutzen",
+    3: "🥕 Vegeta schreiben",
+    4: "🦊 Fuchs schreiben",
+    5: "🎯 Ich liebe Füchse"
+  };
 
-    console.log(
-      `🎉 ${username} hat Quest ${questNummer} abgeschlossen! +10 FuchsXP`
-    );
-  }
+  const questName =
+    questNamen[questNummer] || `Quest ${questNummer}`;
+
+  const chatNachricht =
+    `🎉 @${username} hat die Quest "${questName}" erfolgreich abgeschlossen! +10 FuchsXP 🦊`;
+
+  await streamelementsSenden(chatNachricht);
+
+  console.log(
+    `🎉 ${username} hat Quest ${questNummer} erfolgreich abgeschlossen! +10 FuchsXP`
+  );
 }
 
 
