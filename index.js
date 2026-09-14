@@ -173,7 +173,6 @@ async function questLaden(username, questNummer, datum) {
 // QUEST-FORTSCHRITT SPEICHERN
 // =====================================================
 
-async function questSpeichern(
   username,
   questNummer,
   fortschritt,
@@ -209,10 +208,65 @@ async function questSpeichern(
     return false;
   }
   // =====================================================
+// =====================================================
+// QUEST-FORTSCHRITT SPEICHERN
+// =====================================================
+
+async function questSpeichern(
+  username,
+  questNummer,
+  fortschritt,
+  datum
+) {
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/quest_fortschritt?on_conflict=spieler,datum,quest_nummer`,
+      {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify({
+          spieler: username,
+          datum: datum,
+          quest_nummer: questNummer,
+          fortschritt: fortschritt,
+          aktualisiert: new Date().toISOString(),
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        "❌ Fehler beim Speichern der Quest:",
+        response.status,
+        await response.text()
+      );
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(
+      "❌ Fehler beim Quest-Speichern:",
+      error
+    );
+    return false;
+  }
+}
+// =====================================================
 // QUEST FORTSCHRITT AKTUALISIEREN
 // =====================================================
 
-async function questFortschritt(username, questNummer, menge, ziel) {
+async function questFortschritt(
+  username,
+  questNummer,
+  menge,
+  ziel
+) {
   const datum = heutigesDatum();
 
   const aktuelleQuest = await questLaden(
@@ -224,7 +278,6 @@ async function questFortschritt(username, questNummer, menge, ziel) {
   const alterFortschritt =
     aktuelleQuest?.fortschritt ?? 0;
 
-  // Bereits abgeschlossen
   if (alterFortschritt >= ziel) {
     return;
   }
@@ -249,7 +302,6 @@ async function questFortschritt(username, questNummer, menge, ziel) {
     `📜 ${username} Quest ${questNummer}: ${neuerFortschritt}/${ziel}`
   );
 
-  // Quest gerade abgeschlossen
   if (
     alterFortschritt < ziel &&
     neuerFortschritt >= ziel
@@ -278,6 +330,65 @@ async function questFortschritt(username, questNummer, menge, ziel) {
   }
 }
 
+
+// =====================================================
+// DAILY QUESTS
+// =====================================================
+
+async function questsPruefen(username, text) {
+  const nachricht = String(text || "").toLowerCase();
+
+  await questFortschritt(
+    username,
+    1,
+    1,
+    10
+  );
+
+  const emojiTreffer =
+    nachricht.match(
+      /[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]/gu
+    )?.length ?? 0;
+
+  if (emojiTreffer > 0) {
+    await questFortschritt(
+      username,
+      2,
+      emojiTreffer,
+      5
+    );
+  }
+
+  if (nachricht.includes("vegeta")) {
+    await questFortschritt(
+      username,
+      3,
+      1,
+      1
+    );
+  }
+
+  const fuchsTreffer =
+    nachricht.match(/fuchs/g)?.length ?? 0;
+
+  if (fuchsTreffer > 0) {
+    await questFortschritt(
+      username,
+      4,
+      fuchsTreffer,
+      3
+    );
+  }
+
+  if (nachricht.includes("ich liebe füchse")) {
+    await questFortschritt(
+      username,
+      5,
+      1,
+      2
+    );
+  }
+}
 
 // =====================================================
 // DAILY QUESTS
