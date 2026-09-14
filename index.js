@@ -1051,7 +1051,24 @@ function verbinden() {
     );
   });
 }
+// =============================================
+// RENDER WEB PORT
+// =============================================
 
+import("node:http").then(({ createServer }) => {
+  const server = createServer((req, res) => {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("🦊 Fuchs-XP-Bot läuft!");
+  });
+
+  server.listen(
+    process.env.PORT || 3000,
+    "0.0.0.0",
+    () => {
+      console.log("🌐 Web-Port geöffnet.");
+    }
+  );
+});
 
 // =====================================================
 // BOT STARTEN
