@@ -1,652 +1,1488 @@
 import http from "http";
 import WebSocket from "ws";
 
-const PORT = process.env.PORT || 10000;
-
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
   "https://herznunvdqcmzeffblgo.supabase.co";
 
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const STREAMELEMENTS_JWT = process.env.STREAMELEMENTS_JWT;
+const SUPABASE_SERVICE_ROLE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("❌ SUPABASE_SERVICE_ROLE_KEY fehlt.");
-}
+const STREAMELEMENTS_JWT =
+  process.env.STREAMELEMENTS_JWT;
 
-if (!STREAMELEMENTS_JWT) {
-  console.error("❌ STREAMELEMENTS_JWT fehlt.");
-}
-
-const QUEST_ZIELE = {
-  1: 10,
-  2: 5,
-  3: 1,
-  4: 3,
-  5: 2
-};
-
-const QUEST_NAMEN = {
-  1: "💬 Nachrichten schreiben",
-  2: "😀 Emojis benutzen",
-  3: "🥕 Vegeta schreiben",
-  4: "🦊 Fuchs 3-mal schreiben",
-  5: "🎯 Ich liebe Füchse 2-mal schreiben"
-};
-
-let ws = null;
-let reconnectTimer = null;
 let streamElementsRoomId = null;
 
+
+// =====================================================
+// SUPABASE
+// =====================================================
+
+function headers(extra = {}) {
+  return {
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    "Content-Type": "application/json",
+    ...extra,
+  };
+}
+
+
 async function supabase(path, options = {}) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const response = await fetch(`${SUPABASE_URL}${path}`, {
     ...options,
-    headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: options.prefer || "return=representation",
-      ...(options.headers || {})
-    }
+    headers: headers(options.headers || {}),
   });
 
   const text = await response.text();
-  let data = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
 
   if (!response.ok) {
     throw new Error(
-      `Supabase ${response.status}: ${
-        typeof data === "string" ? data : JSON.stringify(data)
-      }`
+      `Supabase ${response.status}: ${text}`
     );
   }
 
-  return data;
+  return text ? JSON.parse(text) : null;
 }
 
-async function rpc(functionName, body) {
-  const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/rpc/${functionName}`,
+
+async function rpc(functionName, body = {}) {
+  return supabase(
+    `/rest/v1/rpc/${functionName}`,
     {
       method: "POST",
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     }
   );
-
-  const text = await response.text();
-  let data = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      `RPC ${functionName} ${response.status}: ${
-        typeof data === "string" ? data : JSON.stringify(data)
-      }`
-    );
-  }
-
-  return data;
 }
+
+
+// =====================================================
+// STREAM ELEMENTS
+// =====================================================
 
 async function streamelementsSenden(text) {
-  if (!STREAMELEMENTS_JWT || !streamElementsRoomId) {
-    console.error(
-      "⚠️ StreamElements kann nicht senden: JWT oder Room-ID fehlt."
+  if (!STREAMELEMENTS_JWT) {
+    console.log(
+      "⚠️ StreamElements JWT fehlt."
     );
-    return;
+    return false;
   }
 
-  const response = await fetch(
-    `https://api.streamelements.com/kappa/v2/bot/${streamElementsRoomId}/say`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${STREAMELEMENTS_JWT}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ message: text })
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(
-      `❌ StreamElements Senden fehlgeschlagen (${response.status}): ${errorText}`
+  if (!streamElementsRoomId) {
+    console.log(
+      "⚠️ StreamElements Room-ID fehlt."
     );
-    return;
+    return false;
   }
-
-  console.log("📤 StreamElements:", text);
-}
-
-async function aktivitaetSpeichern(username) {
-  const jetzt = new Date().toISOString();
 
   try {
-    const vorhandene = await supabase(
-      `fuchs_aktivitaet?select=spieler&spieler=eq.${encodeURIComponent(
-        username
-      )}&limit=1`
+    const response = await fetch(
+      `https://api.streamelements.com/kappa/v2/bot/${encodeURIComponent(
+        streamElementsRoomId
+      )}/say`,
+      {
+        method: "POST",
+        headers: {
+          Authorization:
+            `Bearer ${STREAMELEMENTS_JWT}`,
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          message: text,
+        }),
+      }
     );
 
-    if (Array.isArray(vorhandene) && vorhandene.length > 0) {
-      await supabase(
-        `fuchs_aktivitaet?spieler=eq.${encodeURIComponent(username)}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            letzte_aktivitaet: jetzt
-          })
-        }
+    const body = await response.text();
+
+    if (!response.ok) {
+      console.error(
+        `❌ StreamElements ${response.status}: ${body}`
       );
-    } else {
-      await supabase("fuchs_aktivitaet", {
-        method: "POST",
-        body: JSON.stringify({
-          spieler: username,
-          letzte_aktivitaet: jetzt,
-          letzte_xp: null
-        })
-      });
+      return false;
     }
 
-    console.log(`💾 Aktivität gespeichert: ${username}`);
+    console.log(
+      `📤 StreamElements: ${text}`
+    );
+
+    return true;
+
   } catch (error) {
-    console.error("❌ Aktivität speichern:", error.message);
+    console.error(
+      "❌ StreamElements senden:",
+      error.message
+    );
+
+    return false;
   }
 }
 
-function heute() {
-  return new Date().toISOString().slice(0, 10);
-}
 
-async function questFortschrittHolen(username) {
-  const datum = heute();
+// =====================================================
+// AKTIVITÄT
+// =====================================================
 
-  const rows = await supabase(
-    `quest_fortschritt?select=quest_nummer,fortschritt&spieler=eq.${encodeURIComponent(
-      username
-    )}&datum=eq.${datum}&order=quest_nummer.asc`
-  );
+async function aktivitaetSpeichern(username) {
+  try {
+    await supabase(
+      `/rest/v1/fuchs_aktivitaet?on_conflict=spieler`,
+      {
+        method: "POST",
+        headers: {
+          Prefer:
+            "resolution=merge-duplicates",
+        },
+        body: JSON.stringify({
+          spieler: username,
+          letzte_aktivitaet:
+            new Date().toISOString(),
+        }),
+      }
+    );
 
-  const map = {};
+    console.log(
+      `💾 Aktivität gespeichert: ${username}`
+    );
 
-  for (const row of rows || []) {
-    map[row.quest_nummer] = Number(row.fortschritt || 0);
+  } catch (error) {
+    console.error(
+      "❌ Aktivität speichern:",
+      error.message
+    );
   }
-
-  return map;
 }
+
+
+// =====================================================
+// NORMALE QUESTS
+// =====================================================
 
 async function questsAnlegen(username) {
   try {
-    await rpc("fuchs_quests_anlegen", {
-      spieler_name: username
-    });
+    await rpc(
+      "fuchs_quests_anlegen",
+      {
+        spieler_name: username,
+      }
+    );
   } catch (error) {
-    console.error("❌ Quests anlegen:", error.message);
+    console.error(
+      "❌ Normale Quests anlegen:",
+      error.message
+    );
   }
 }
 
+
+async function questFortschrittHolen(username) {
+  try {
+    const datum =
+      new Date()
+        .toISOString()
+        .slice(0, 10);
+
+    return await supabase(
+      `/rest/v1/quest_fortschritt` +
+      `?spieler=eq.${encodeURIComponent(username)}` +
+      `&datum=eq.${datum}` +
+      `&order=quest_nummer.asc`
+    );
+
+  } catch (error) {
+    console.error(
+      "❌ Quest-Fortschritt holen:",
+      error.message
+    );
+
+    return [];
+  }
+}
+
+
 async function questsPruefen(username, text) {
   try {
-    const nachricht = String(text ?? "").toLowerCase();
 
     await questsAnlegen(username);
 
-    const vorher = await questFortschrittHolen(username);
+    const vorher =
+      await questFortschrittHolen(
+        username
+      );
 
-    await rpc("quest_nachricht_verarbeiten", {
-      spieler_name: username,
-      nachricht
-    });
+    await rpc(
+      "quest_nachricht_verarbeiten",
+      {
+        spieler_name: username,
+        nachricht: text,
+      }
+    );
 
-    const nachher = await questFortschrittHolen(username);
+    const nachher =
+      await questFortschrittHolen(
+        username
+      );
 
-    for (const nummer of [1, 2, 3, 4, 5]) {
-      const ziel = QUEST_ZIELE[nummer];
-      const alt = vorher[nummer] || 0;
-      const neu = Math.min(nachher[nummer] || 0, ziel);
+    const vorherMap =
+      new Map(
+        vorher.map(
+          q => [
+            q.quest_nummer,
+            Number(q.fortschritt || 0)
+          ]
+        )
+      );
 
-      if (alt < ziel && neu >= ziel) {
+    const ziele = {
+      1: 10,
+      2: 5,
+      3: 1,
+      4: 3,
+      5: 2,
+    };
+
+
+    // Prüfen, ob eine normale Quest
+    // gerade abgeschlossen wurde
+
+    for (const quest of nachher) {
+
+      const nummer =
+        Number(quest.quest_nummer);
+
+      const alt =
+        vorherMap.get(nummer) || 0;
+
+      const neu =
+        Number(quest.fortschritt || 0);
+
+      const ziel =
+        ziele[nummer];
+
+      if (
+        ziel &&
+        neu >= ziel &&
+        alt < ziel
+      ) {
+
         await streamelementsSenden(
           `@${username} Quest erfolgreich erledigt! +10 FuchsXP 🦊`
-        );
-
-        console.log(
-          `✅ ${username} hat Quest ${nummer} abgeschlossen: ${QUEST_NAMEN[nummer]}`
         );
       }
     }
 
-    const alleVorher = [1, 2, 3, 4, 5].every(
-      (nummer) => (vorher[nummer] || 0) >= QUEST_ZIELE[nummer]
-    );
 
-    const alleNachher = [1, 2, 3, 4, 5].every(
-      (nummer) => (nachher[nummer] || 0) >= QUEST_ZIELE[nummer]
-    );
+    // Prüfen, ob alle 5 normalen
+    // Quests fertig sind
 
-    if (!alleVorher && alleNachher) {
+    const alleFertig =
+      nachher.length >= 5 &&
+      nachher.every(q => {
+        const ziel =
+          ziele[
+            Number(q.quest_nummer)
+          ];
+
+        return (
+          ziel &&
+          Number(q.fortschritt || 0)
+            >= ziel
+        );
+      });
+
+
+    const vorherAlleFertig =
+      vorher.length >= 5 &&
+      vorher.every(q => {
+        const ziel =
+          ziele[
+            Number(q.quest_nummer)
+          ];
+
+        return (
+          ziel &&
+          Number(q.fortschritt || 0)
+            >= ziel
+        );
+      });
+
+
+    if (
+      alleFertig &&
+      !vorherAlleFertig
+    ) {
+
       await streamelementsSenden(
         `@${username} Du hast heute alle Aufgaben erledigt! Komm morgen wieder – dann warten neue Aufgaben auf dich! 🦊🏆`
       );
     }
+
   } catch (error) {
-    console.error("❌ Quests prüfen:", error.message);
-  }
-}
 
-async function profilHolen(username) {
-  const rows = await supabase(
-    `fuchsprofile?select=spieler,xp,rudel,pvp_siege,pvp_niederlagen&spieler=eq.${encodeURIComponent(
-      username
-    )}&limit=1`
-  );
-
-  return rows?.[0] || null;
-}
-
-async function profilAnlegen(username) {
-  try {
-    const profil = await profilHolen(username);
-
-    if (profil) {
-      return profil;
-    }
-
-    await supabase("fuchsprofile", {
-      method: "POST",
-      body: JSON.stringify({
-        spieler: username,
-        xp: 0,
-        rudel: null,
-        pvp_siege: 0,
-        pvp_niederlagen: 0
-      })
-    });
-
-    return await profilHolen(username);
-  } catch (error) {
-    console.error("❌ Profil anlegen:", error.message);
-    return null;
-  }
-}
-
-async function xpGeben(username, menge) {
-  try {
-    const neueXp = await rpc("fuchs_xp_hinzufuegen", {
-      spieler_name: username,
-      xp_menge: menge
-    });
-
-    console.log(`⭐ ${username}: +${menge} XP → ${neueXp}`);
-
-    return Number(neueXp);
-  } catch (error) {
-    console.error("❌ XP geben:", error.message);
-    return null;
-  }
-}
-
-async function offeneKampfHolen(herausforderer, gegner) {
-  const rows = await supabase(
-    `offene_kampfe?select=id,herausforderer,gegner,erstellt&herausforderer=eq.${encodeURIComponent(
-      herausforderer
-    )}&gegner=eq.${encodeURIComponent(gegner)}&order=erstellt.desc&limit=1`
-  );
-
-  return rows?.[0] || null;
-}
-
-async function pvpStarten(herausforderer, gegner) {
-  if (!gegner || herausforderer === gegner) {
-    await streamelementsSenden(
-      `@${herausforderer} Du kannst dich nicht selbst zum PvP herausfordern.`
+    console.error(
+      "❌ Normale Quests:",
+      error.message
     );
-    return;
   }
+}
+
+
+// =====================================================
+// PERSÖNLICHE QUESTS
+// =====================================================
+
+// Reihenfolge:
+//
+// 6 = Gaming
+// 7 = Twitch
+// 8 = Rudel
+// 9 = Hallo
+// 10 = Mega
+//
+// Immer nur die ERSTE offene Quest
+// ist für den Spieler aktiv.
+
+const persoenlicheQuests = {
+
+  6: {
+    wort: "gaming",
+    ziel: 2,
+    text:
+      "🎮 Deine persönliche Aufgabe: Schreibe „Gaming“ 2-mal innerhalb von 60 Sekunden!"
+  },
+
+  7: {
+    wort: "twitch",
+    ziel: 2,
+    text:
+      "💜 Deine persönliche Aufgabe: Schreibe „Twitch“ 2-mal innerhalb von 60 Sekunden!"
+  },
+
+  8: {
+    wort: "rudel",
+    ziel: 2,
+    text:
+      "🐺 Deine persönliche Aufgabe: Schreibe „Rudel“ 2-mal innerhalb von 60 Sekunden!"
+  },
+
+  9: {
+    wort: "hallo",
+    ziel: 3,
+    text:
+      "👋 Deine persönliche Aufgabe: Schreibe „Hallo“ 3-mal innerhalb von 60 Sekunden!"
+  },
+
+  10: {
+    wort: "mega",
+    ziel: 2,
+    text:
+      "⭐ Deine persönliche Aufgabe: Schreibe „Mega“ 2-mal innerhalb von 60 Sekunden!"
+  },
+
+};
+
+
+async function persoenlicheQuestsAnlegen(
+  username
+) {
 
   try {
-    await profilAnlegen(herausforderer);
-    await profilAnlegen(gegner);
 
-    const bestehend = await offeneKampfHolen(
-      herausforderer,
-      gegner
-    );
-
-    if (bestehend) {
-      await streamelementsSenden(
-        `⚔️ @${herausforderer} Du hast @${gegner} bereits herausgefordert!`
-      );
-      return;
-    }
-
-    await supabase("offene_kampfe", {
-      method: "POST",
-      body: JSON.stringify({
-        herausforderer,
-        gegner,
-        erstellt: new Date().toISOString()
-      })
-    });
-
-    await streamelementsSenden(
-      `⚔️ @${herausforderer} fordert @${gegner} zum PvP heraus! @${gegner} hat 60 Sekunden Zeit mit !annehmen zu antworten!`
-    );
-  } catch (error) {
-    console.error("❌ PvP starten:", error.message);
-  }
-}
-
-async function pvpAnnehmen(gegner) {
-  try {
-    const rows = await supabase(
-      `offene_kampfe?select=id,herausforderer,gegner,erstellt&gegner=eq.${encodeURIComponent(
-        gegner
-      )}&order=erstellt.asc&limit=1`
-    );
-
-    const kampf = rows?.[0];
-
-    if (!kampf) {
-      await streamelementsSenden(
-        `@${gegner} Es gibt keinen offenen PvP-Kampf für dich.`
-      );
-      return;
-    }
-
-    const erstellt = new Date(kampf.erstellt).getTime();
-    const jetzt = Date.now();
-
-    if (jetzt - erstellt > 60_000) {
-      await supabase(
-        `offene_kampfe?id=eq.${kampf.id}`,
-        {
-          method: "DELETE",
-          prefer: "return=minimal"
-        }
-      );
-
-      await streamelementsSenden(
-        `@${gegner} Die 60 Sekunden sind leider vorbei. Die Herausforderung ist abgelaufen.`
-      );
-
-      return;
-    }
-
-    await supabase(
-      `offene_kampfe?id=eq.${kampf.id}`,
+    await rpc(
+      "persoenliche_quest_pruefen",
       {
-        method: "DELETE",
-        prefer: "return=minimal"
+        spieler_name: username,
+        nachricht: "",
       }
     );
 
-    const spieler = [
-      kampf.herausforderer,
-      kampf.gegner
+  } catch (error) {
+
+    console.error(
+      "❌ Persönliche Quests anlegen:",
+      error.message
+    );
+  }
+}
+
+
+async function persoenlicheQuestsHolen(
+  username
+) {
+
+  try {
+
+    const datum =
+      new Date()
+        .toISOString()
+        .slice(0, 10);
+
+    return await supabase(
+      `/rest/v1/daily_quest_assignments` +
+      `?spieler=eq.${encodeURIComponent(username)}` +
+      `&datum=eq.${datum}` +
+      `&quest_nummer=gte.6` +
+      `&quest_nummer=lte.10` +
+      `&order=quest_nummer.asc`
+    );
+
+  } catch (error) {
+
+    console.error(
+      "❌ Persönliche Quests holen:",
+      error.message
+    );
+
+    return [];
+  }
+}
+
+
+// =====================================================
+// !QUEST
+// =====================================================
+
+async function persoenlicheQuestAnzeigen(
+  username
+) {
+
+  try {
+
+    await persoenlicheQuestsAnlegen(
+      username
+    );
+
+    const quests =
+      await persoenlicheQuestsHolen(
+        username
+      );
+
+    if (!quests.length) {
+
+      await streamelementsSenden(
+        `@${username} 🎯 Deine persönlichen Aufgaben konnten noch nicht angelegt werden.`
+      );
+
+      return;
+    }
+
+
+    // Nur die erste offene Aufgabe anzeigen
+
+    const aktive =
+      quests.find(
+        q => !q.abgeschlossen
+      );
+
+
+    if (!aktive) {
+
+      await streamelementsSenden(
+        `@${username} 🎉 Du hast heute alle persönlichen Aufgaben geschafft! Komm morgen wieder für neue Aufgaben! 🦊🏆`
+      );
+
+      return;
+    }
+
+
+    const questNummer =
+      Number(
+        aktive.quest_nummer
+      );
+
+    const quest =
+      persoenlicheQuests[
+        questNummer
+      ];
+
+
+    if (!quest) return;
+
+
+    const fortschritt =
+      Number(
+        aktive.fortschritt || 0
+      );
+
+
+    await streamelementsSenden(
+      `@${username} 🎯 Deine persönliche Aufgabe ist: ${quest.text} Fortschritt: ${fortschritt}/${quest.ziel}`
+    );
+
+  } catch (error) {
+
+    console.error(
+      "❌ Persönliche Quest anzeigen:",
+      error.message
+    );
+  }
+}
+
+
+// =====================================================
+// PERSÖNLICHE QUEST PRÜFEN
+// =====================================================
+
+async function persoenlicheQuestPruefen(
+  username,
+  text
+) {
+
+  try {
+
+    await persoenlicheQuestsAnlegen(
+      username
+    );
+
+
+    let quests =
+      await persoenlicheQuestsHolen(
+        username
+      );
+
+
+    if (!quests.length) return;
+
+
+    // Nur die erste offene Quest zählt
+
+    const aktive =
+      quests.find(
+        q => !q.abgeschlossen
+      );
+
+
+    if (!aktive) return;
+
+
+    const nummer =
+      Number(
+        aktive.quest_nummer
+      );
+
+
+    const quest =
+      persoenlicheQuests[
+        nummer
+      ];
+
+
+    if (!quest) return;
+
+
+    const vorher =
+      Number(
+        aktive.fortschritt || 0
+      );
+
+
+    // Nachricht an Datenbank senden
+
+    await rpc(
+      "persoenliche_quest_pruefen",
+      {
+        spieler_name: username,
+        nachricht: text,
+      }
+    );
+
+
+    quests =
+      await persoenlicheQuestsHolen(
+        username
+      );
+
+
+    const danach =
+      quests.find(
+        q =>
+          Number(q.quest_nummer)
+          === nummer
+      );
+
+
+    if (!danach) return;
+
+
+    const neu =
+      Number(
+        danach.fortschritt || 0
+      );
+
+
+    // Quest gerade abgeschlossen?
+
+    if (
+      neu >= quest.ziel &&
+      vorher < quest.ziel
+    ) {
+
+      await streamelementsSenden(
+        `@${username} ✅ Deine persönliche Aufgabe ist erfolgreich abgeschlossen! +10 FuchsXP 🦊`
+      );
+
+
+      // Nächste persönliche Quest
+
+      const naechste =
+        quests.find(
+          q =>
+            !q.abgeschlossen &&
+            Number(q.quest_nummer)
+              > nummer
+        );
+
+
+      if (naechste) {
+
+        const naechsteNummer =
+          Number(
+            naechste.quest_nummer
+          );
+
+        const naechsteQuest =
+          persoenlicheQuests[
+            naechsteNummer
+          ];
+
+
+        if (naechsteQuest) {
+
+          await streamelementsSenden(
+            `@${username} 🎯 Deine nächste persönliche Aufgabe ist: ${naechsteQuest.text}`
+          );
+        }
+
+
+      } else {
+
+        await streamelementsSenden(
+          `@${username} 🎉 Du hast heute alle persönlichen Aufgaben geschafft! Komm morgen wieder für neue Aufgaben! 🦊🏆`
+        );
+      }
+    }
+
+  } catch (error) {
+
+    console.error(
+      "❌ Persönliche Quest:",
+      error.message
+    );
+  }
+}
+
+
+// =====================================================
+// PROFIL
+// =====================================================
+
+async function profil(username) {
+
+  try {
+
+    const rows =
+      await supabase(
+        `/rest/v1/fuchsprofile` +
+        `?spieler=eq.${encodeURIComponent(username)}` +
+        `&limit=1`
+      );
+
+
+    const p =
+      rows?.[0];
+
+
+    if (!p) {
+
+      return (
+        `🦊 ${username} hat noch kein Fuchsprofil.`
+      );
+    }
+
+
+    const xp =
+      Number(p.xp || 0);
+
+
+    let level =
+      "🐾 Fuchsbaby";
+
+
+    if (xp >= 100)
+      level = "🦊 Jungfuchs";
+
+    if (xp >= 250)
+      level = "🍂 Waldläufer";
+
+    if (xp >= 500)
+      level = "🌲 Rudelfuchs";
+
+    if (xp >= 1000)
+      level = "🔥 Fuchsjäger";
+
+    if (xp >= 2000)
+      level = "👑 Alphafuchs";
+
+    if (xp >= 5000)
+      level = "✨ Fuchslegende";
+
+    if (xp >= 10000)
+      level = "🦊🏆 Fuchsmeister";
+
+
+    const grenzen = [
+      100,
+      250,
+      500,
+      1000,
+      2000,
+      5000,
+      10000
     ];
 
-    const gewinnerIndex = Math.floor(Math.random() * 2);
 
-    const gewinner = spieler[gewinnerIndex];
-    const verlierer = spieler[1 - gewinnerIndex];
+    const naechstes =
+      grenzen.find(
+        wert => xp < wert
+      );
 
-    await profilAnlegen(gewinner);
-    await profilAnlegen(verlierer);
 
-    const gewinnerProfil = await profilHolen(gewinner);
-    const verliererProfil = await profilHolen(verlierer);
+    const bis =
+      naechstes
+        ? naechstes - xp
+        : 0;
+
+
+    return (
+      `🦊 ${username}` +
+      ` | ⭐ ${xp} FuchsXP` +
+      ` | 🏆 Level ${level}` +
+      ` | 🐺 Rudel: ${p.rudel || "noch nicht gewählt"}` +
+      ` | ⚔️ Siege: ${p.pvp_siege || 0}` +
+      ` | 💀 Niederlagen: ${p.pvp_niederlagen || 0}` +
+      ` | 📈 Noch ${bis} XP bis zum nächsten Level`
+    );
+
+  } catch (error) {
+
+    console.error(
+      "❌ Profil:",
+      error.message
+    );
+
+    return `@${username} Profil konnte nicht geladen werden.`;
+  }
+}
+
+
+// =====================================================
+// RUDELWAHL
+// =====================================================
+
+async function rudelwahl(
+  username,
+  rudel
+) {
+
+  const map = {
+
+    feuer:
+      "🔥 Feuerrudel",
+
+    wasser:
+      "🌊 Wasserrudel",
+
+    wald:
+      "🌲 Waldrudel",
+
+    ice:
+      "🧊 ICErudel",
+
+  };
+
+
+  const gewaehlt =
+    map[
+      (rudel || "")
+        .toLowerCase()
+    ];
+
+
+  if (!gewaehlt) {
+
+    return (
+      `@${username} Bitte wähle: ` +
+      `Feuer, Wasser, Wald oder ICE.`
+    );
+  }
+
+
+  try {
 
     await supabase(
-      `fuchsprofile?spieler=eq.${encodeURIComponent(gewinner)}`,
+      `/rest/v1/fuchsprofile?on_conflict=spieler`,
+      {
+        method: "POST",
+        headers: {
+          Prefer:
+            "resolution=merge-duplicates",
+        },
+        body: JSON.stringify({
+          spieler: username,
+          rudel: gewaehlt,
+        }),
+      }
+    );
+
+
+    return (
+      `@${username} 🐺 Du bist jetzt im ${gewaehlt}!`
+    );
+
+  } catch (error) {
+
+    console.error(
+      "❌ Rudelwahl:",
+      error.message
+    );
+
+    return (
+      `@${username} Die Rudelwahl konnte nicht gespeichert werden.`
+    );
+  }
+}
+
+
+// =====================================================
+// PVP
+// =====================================================
+
+const offeneKaempfe =
+  new Map();
+
+
+async function pvpStart(
+  username,
+  gegner
+) {
+
+  if (
+    !gegner ||
+    gegner.toLowerCase()
+      === username.toLowerCase()
+  ) {
+
+    return (
+      `@${username} Du kannst dich nicht selbst herausfordern.`
+    );
+  }
+
+
+  offeneKaempfe.set(
+    gegner.toLowerCase(),
+    {
+      herausforderer:
+        username,
+
+      gegner:
+        gegner,
+
+      erstellt:
+        Date.now(),
+    }
+  );
+
+
+  return (
+    `⚔️ @${username} fordert @${gegner} zum PvP heraus! ` +
+    `@${gegner} hat 60 Sekunden Zeit mit !annehmen zu antworten!`
+  );
+}
+
+
+async function pvpAnnehmen(
+  username
+) {
+
+  const key =
+    username.toLowerCase();
+
+
+  const kampf =
+    offeneKaempfe.get(key);
+
+
+  if (!kampf) {
+    return null;
+  }
+
+
+  if (
+    Date.now() -
+    kampf.erstellt
+    > 60_000
+  ) {
+
+    offeneKaempfe.delete(key);
+
+    return (
+      `@${username} Die PvP-Herausforderung ist abgelaufen.`
+    );
+  }
+
+
+  offeneKaempfe.delete(key);
+
+
+  const herausfordererGewinnt =
+    Math.random() < 0.5;
+
+
+  const gewinner =
+    herausfordererGewinnt
+      ? kampf.herausforderer
+      : username;
+
+
+  const verlierer =
+    herausfordererGewinnt
+      ? username
+      : kampf.herausforderer;
+
+
+  // +100 XP
+
+  await rpc(
+    "fuchs_xp_hinzufuegen",
+    {
+      spieler_name:
+        gewinner,
+
+      xp_menge:
+        100,
+    }
+  );
+
+
+  // Sieg speichern
+
+  try {
+
+    const rows =
+      await supabase(
+        `/rest/v1/fuchsprofile` +
+        `?spieler=eq.${encodeURIComponent(gewinner)}` +
+        `&select=pvp_siege` +
+        `&limit=1`
+      );
+
+
+    const alt =
+      Number(
+        rows?.[0]?.pvp_siege || 0
+      );
+
+
+    await supabase(
+      `/rest/v1/fuchsprofile` +
+      `?spieler=eq.${encodeURIComponent(gewinner)}`,
       {
         method: "PATCH",
         body: JSON.stringify({
           pvp_siege:
-            Number(gewinnerProfil?.pvp_siege || 0) + 1,
-          aktualisiert: new Date().toISOString()
+            alt + 1,
         }),
-        prefer: "return=minimal"
       }
     );
 
+  } catch (error) {
+
+    console.error(
+      "❌ PvP-Sieg:",
+      error.message
+    );
+  }
+
+
+  // Niederlage speichern
+
+  try {
+
+    const rows =
+      await supabase(
+        `/rest/v1/fuchsprofile` +
+        `?spieler=eq.${encodeURIComponent(verlierer)}` +
+        `&select=pvp_niederlagen` +
+        `&limit=1`
+      );
+
+
+    const alt =
+      Number(
+        rows?.[0]?.pvp_niederlagen || 0
+      );
+
+
     await supabase(
-      `fuchsprofile?spieler=eq.${encodeURIComponent(verlierer)}`,
+      `/rest/v1/fuchsprofile` +
+      `?spieler=eq.${encodeURIComponent(verlierer)}`,
       {
         method: "PATCH",
         body: JSON.stringify({
           pvp_niederlagen:
-            Number(verliererProfil?.pvp_niederlagen || 0) + 1,
-          aktualisiert: new Date().toISOString()
+            alt + 1,
         }),
-        prefer: "return=minimal"
       }
     );
 
-    await xpGeben(gewinner, 100);
-
-    await streamelementsSenden(
-      `⚔️ PVP-KAMPF! @${kampf.herausforderer} 🆚 @${kampf.gegner} | 🏆 Gewinner: @${gewinner}! +100 FuchsXP 🦊 | 💀 @${verlierer} verliert den Kampf.`
-    );
   } catch (error) {
-    console.error("❌ PvP annehmen:", error.message);
-  }
-}
 
-async function chatVerarbeiten(message) {
-  try {
-    console.log(
-      "📡 StreamElements Nachricht:",
-      JSON.stringify(message)
-    );
-
-    if (message.type === "response") return;
-    if (message.type !== "message") return;
-    if (message.topic !== "channel.chat.message") return;
-
-    if (message.room) {
-      streamElementsRoomId = message.room;
-    }
-
-    const data = message.data;
-
-    const usernameRaw =
-      data?.chatter_user_name ||
-      data?.chatter_user_login ||
-      data?.sender?.user_name ||
-      data?.sender?.username ||
-      data?.username ||
-      data?.user?.name;
-
-    if (!usernameRaw) return;
-const username = String(usernameRaw)
-  .trim()
-  .toLowerCase();
-
-// Eigene StreamElements-Nachrichten ignorieren
-if (username === "streamelements") {
-  console.log("🤖 Eigene StreamElements-Nachricht ignoriert.");
-  return;
-}
-
-const text =
-  data?.message?.text ||
-  data?.text ||
-  data?.content ||
-  "";
-
-console.log(`💬 Aktivität erkannt: ${username}`);
-
-    await profilAnlegen(username);
-    await aktivitaetSpeichern(username);
-    await questsPruefen(username, text);
-
-    const nachricht = String(text).trim();
-
-    const pvpMatch = nachricht.match(
-      /^!pvp\s+@?([a-zA-Z0-9_]+)$/i
-    );
-
-    if (pvpMatch) {
-      await pvpStarten(
-        username,
-        pvpMatch[1].toLowerCase()
-      );
-      return;
-    }
-
-    if (/^!annehmen$/i.test(nachricht)) {
-      await pvpAnnehmen(username);
-      return;
-    }
-  } catch (error) {
     console.error(
-      "❌ Chat-Verarbeitung:",
+      "❌ PvP-Niederlage:",
       error.message
     );
   }
+
+
+  return (
+    `⚔️ PVP-KAMPF! ` +
+    `@${kampf.herausforderer} 🆚 @${username} | ` +
+    `🏆 Gewinner: @${gewinner}! +100 FuchsXP 🦊 | ` +
+    `💀 @${verlierer} verliert den Kampf.`
+  );
 }
 
-function verbinden() {
-  if (!STREAMELEMENTS_JWT) {
-    console.error(
-      "❌ Keine STREAMELEMENTS_JWT – WebSocket startet nicht."
-    );
+
+// =====================================================
+// CHAT
+// =====================================================
+
+async function chatVerarbeiten(
+  message
+) {
+
+  console.log(
+    "📡 StreamElements Nachricht:",
+    JSON.stringify(message)
+  );
+
+
+  if (
+    message.type === "response"
+  ) {
     return;
   }
 
-  if (ws) {
-    try {
-      ws.close();
-    } catch {}
+
+  if (
+    message.type !== "message"
+  ) {
+    return;
   }
 
-  console.log("🔌 Verbinde mit StreamElements...");
 
-  ws = new WebSocket(
-    "wss://astro.streamelements.com"
+  if (
+    message.topic !==
+    "channel.chat.message"
+  ) {
+    return;
+  }
+
+
+  // Room-ID aus Chatnachricht
+
+  if (message.room) {
+
+    streamElementsRoomId =
+      message.room;
+
+    console.log(
+      `🏠 StreamElements Room-ID: ${streamElementsRoomId}`
+    );
+  }
+
+
+  const data =
+    message.data;
+
+
+  const usernameRaw =
+    data?.chatter_user_name ||
+    data?.chatter_user_login ||
+    data?.sender?.user_name ||
+    data?.sender?.username ||
+    data?.username ||
+    data?.user?.name;
+
+
+  if (!usernameRaw) {
+    return;
+  }
+
+
+  const username =
+    usernameRaw
+      .trim()
+      .toLowerCase();
+
+
+  const text =
+    data?.message?.text ||
+    data?.text ||
+    "";
+
+
+  console.log(
+    `💬 Aktivität erkannt: ${username}`
   );
 
-  ws.on("open", () => {
-    console.log(
-      "🟢 StreamElements WebSocket verbunden."
-    );
-  });
 
-  ws.on("message", async (raw) => {
-    try {
-      const message = JSON.parse(
-        raw.toString()
+  console.log(
+    `📝 Nachricht: ${text}`
+  );
+
+
+  await aktivitaetSpeichern(
+    username
+  );
+
+
+  // =================================================
+  // !PVP
+  // =================================================
+
+  const pvpMatch =
+    text.match(
+      /^!pvp\s+@?([a-zA-Z0-9_]+)$/i
+    );
+
+
+  if (pvpMatch) {
+
+    const antwort =
+      await pvpStart(
+        username,
+        pvpMatch[1]
       );
+
+
+    await streamelementsSenden(
+      antwort
+    );
+
+
+    return;
+  }
+
+
+  // =================================================
+  // !ANNEHMEN
+  // =================================================
+
+  if (
+    /^!annehmen$/i.test(
+      text.trim()
+    )
+  ) {
+
+    const antwort =
+      await pvpAnnehmen(
+        username
+      );
+
+
+    if (antwort) {
+
+      await streamelementsSenden(
+        antwort
+      );
+    }
+
+
+    return;
+  }
+
+
+  // =================================================
+  // !PROFIL
+  // =================================================
+
+  if (
+    /^!profil$/i.test(
+      text.trim()
+    )
+  ) {
+
+    const antwort =
+      await profil(
+        username
+      );
+
+
+    await streamelementsSenden(
+      antwort
+    );
+
+
+    return;
+  }
+
+
+  // =================================================
+  // !RUDELWAHL
+  // =================================================
+
+  if (
+    /^!rudelwahl\s+/i.test(
+      text.trim()
+    )
+  ) {
+
+    const teile =
+      text
+        .trim()
+        .split(/\s+/);
+
+
+    const antwort =
+      await rudelwahl(
+        username,
+        teile[1]
+      );
+
+
+    await streamelementsSenden(
+      antwort
+    );
+
+
+    return;
+  }
+
+
+  // =================================================
+  // !QUEST
+  // =================================================
+
+  if (
+    /^!quest$/i.test(
+      text.trim()
+    )
+  ) {
+
+    await persoenlicheQuestAnzeigen(
+      username
+    );
+
+
+    return;
+  }
+
+
+  // =================================================
+  // NORMALE QUESTS
+  // =================================================
+
+  await questsPruefen(
+    username,
+    text
+  );
+
+
+  // =================================================
+  // PERSÖNLICHE QUEST
+  // =================================================
+
+  await persoenlicheQuestPruefen(
+    username,
+    text
+  );
+}
+
+
+// =====================================================
+// WEBSOCKET
+// =====================================================
+
+let ws;
+
+
+function verbinden() {
+
+  ws =
+    new WebSocket(
+      "wss://astro.streamelements.com"
+    );
+
+
+  ws.on(
+    "open",
+    () => {
 
       console.log(
-        "📨 WebSocket:",
-        message.type
+        "🔌 StreamElements WebSocket verbunden."
       );
+    }
+  );
 
-      if (message.type === "welcome") {
-        const subscribeNachricht = {
-          type: "subscribe",
-          nonce: crypto.randomUUID(),
-          data: {
-            topic: "channel.chat.message",
-            token: STREAMELEMENTS_JWT,
-            token_type: "jwt"
-          }
-        };
 
-        ws.send(
-          JSON.stringify(
-            subscribeNachricht
-          )
+  ws.on(
+    "message",
+    async raw => {
+
+      try {
+
+        const message =
+          JSON.parse(
+            raw.toString()
+          );
+
+
+        // StreamElements Begrüßung
+
+        if (
+          message.type ===
+          "welcome"
+        ) {
+
+          const subscribeNachricht = {
+
+            type:
+              "subscribe",
+
+            nonce:
+              crypto.randomUUID(),
+
+            data: {
+
+              topic:
+                "channel.chat.message",
+
+              token:
+                STREAMELEMENTS_JWT,
+
+              token_type:
+                "jwt",
+
+            },
+
+          };
+
+
+          ws.send(
+            JSON.stringify(
+              subscribeNachricht
+            )
+          );
+
+
+          console.log(
+            "📡 StreamElements Chat-Topic abonniert."
+          );
+
+
+          return;
+        }
+
+
+        await chatVerarbeiten(
+          message
         );
 
-        console.log(
-          "📡 Chat-Topic abonniert."
-        );
+      } catch (error) {
 
-        return;
+        console.error(
+          "❌ WebSocket Nachricht:",
+          error.message
+        );
       }
+    }
+  );
 
-      await chatVerarbeiten(message);
-    } catch (error) {
+
+  ws.on(
+    "error",
+    error => {
+
       console.error(
-        "❌ WebSocket Nachricht:",
+        "❌ StreamElements WebSocket:",
         error.message
       );
     }
-  });
+  );
 
-  ws.on("error", (error) => {
-    console.error(
-      "❌ StreamElements WebSocket:",
-      error.message
-    );
-  });
 
-  ws.on("close", () => {
-    console.log(
-      "⚠️ StreamElements-Verbindung beendet."
-    );
+  ws.on(
+    "close",
+    () => {
 
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer);
-    }
-
-    reconnectTimer = setTimeout(() => {
       console.log(
-        "🔄 Neuer Verbindungsversuch..."
+        "⚠️ StreamElements-Verbindung beendet."
       );
 
-      verbinden();
-    }, 5000);
-  });
+
+      console.log(
+        "🔄 Neuer Verbindungsversuch in 5 Sekunden..."
+      );
+
+
+      setTimeout(
+        verbinden,
+        5000
+      );
+    }
+  );
 }
 
-const server = http.createServer(
-  (req, res) => {
-    res.writeHead(200, {
-      "Content-Type":
-        "text/plain; charset=utf-8"
-    });
 
-    res.end(
-      "🦊 Fuchs-XP-Bot läuft!"
-    );
-  }
-);
+// =====================================================
+// RENDER WEB SERVER
+// =====================================================
+
+const server =
+  http.createServer(
+    (req, res) => {
+
+      res.writeHead(
+        200,
+        {
+          "Content-Type":
+            "text/plain; charset=utf-8",
+        }
+      );
+
+
+      res.end(
+        "🦊 Fuchs-XP-Bot läuft!"
+      );
+    }
+  );
+
 
 server.listen(
-  PORT,
+  process.env.PORT || 10000,
   "0.0.0.0",
   () => {
+
     console.log(
-      `🌐 Web-Port geöffnet auf ${PORT}.`
+      `🌐 Web-Port geöffnet auf ${
+        process.env.PORT || 10000
+      }.`
     );
   }
 );
 
+
+// =====================================================
+// BOT STARTEN
+// =====================================================
+
 verbinden();
+
 
 console.log(
   "🦊 Fuchs-XP-Bot gestartet!"
 );
+    
