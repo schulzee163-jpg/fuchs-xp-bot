@@ -172,7 +172,7 @@ async function questLaden(username, questNummer, datum) {
 // =====================================================
 // QUEST-FORTSCHRITT SPEICHERN
 // =====================================================
-
+async function questFortschritt(
   username,
   questNummer,
   fortschritt,
