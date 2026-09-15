@@ -1455,6 +1455,304 @@ async function kampfAnnehmen(
   );
 
 }
+const server =
+  http.createServer(
+    async (req, res) => {
+      try {
+        if (req.url === "/pvp") {
+          res.writeHead(
+            200,
+            {
+              "Content-Type":
+                "text/html; charset=utf-8",
+            }
+          );
+
+          res.end(`
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuchs PvP</title>
+<style>
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: Arial, sans-serif;
+}
+#kampf {
+  width: 100%;
+  padding: 25px;
+  opacity: 0;
+  transition: opacity .3s;
+}
+.box {
+  background: rgba(0,0,0,.82);
+  border: 3px solid rgba(255,255,255,.18);
+  border-radius: 25px;
+  padding: 25px;
+  color: white;
+  text-align: center;
+  box-shadow: 0 0 35px rgba(0,0,0,.65);
+}
+.titel {
+  font-size: 38px;
+  font-weight: 900;
+  margin-bottom: 24px;
+}
+.kaempfer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.spieler {
+  flex: 1;
+  min-width: 0;
+}
+.name {
+  font-size: 28px;
+  font-weight: 900;
+}
+.rudel,
+.pokemon {
+  font-size: 24px;
+  margin-top: 8px;
+}
+.vs {
+  font-size: 34px;
+  font-weight: 900;
+}
+.warten {
+  margin-top: 20px;
+  font-size: 24px;
+  font-weight: 900;
+}
+.sieger {
+  margin-top: 20px;
+  font-size: 28px;
+  font-weight: 900;
+}
+</style>
+</head>
+<body>
+<div id="kampf">
+  <div class="box">
+    <div id="titel" class="titel">
+      ⚔️ RUDEL-KAMPF ⚔️
+    </div>
+
+    <div class="kaempfer">
+      <div class="spieler">
+        <div id="linksName" class="name"></div>
+        <div id="linksRudel" class="rudel"></div>
+        <div id="linksPokemon" class="pokemon"></div>
+      </div>
+
+      <div class="vs">VS</div>
+
+      <div class="spieler">
+        <div id="rechtsName" class="name"></div>
+        <div id="rechtsRudel" class="rudel"></div>
+        <div id="rechtsPokemon" class="pokemon"></div>
+      </div>
+    </div>
+
+    <div id="warten" class="warten"></div>
+    <div id="sieger" class="sieger"></div>
+  </div>
+</div>
+
+<script>
+let letzterKampf = null;
+
+async function datenLaden() {
+  try {
+    const response =
+      await fetch("/pvp-data");
+
+    if (!response.ok) {
+      return;
+    }
+
+    const data =
+      await response.json();
+
+    if (!data || !data.status) {
+      document
+        .getElementById("kampf")
+        .style.opacity = 0;
+      return;
+    }
+
+    const typ =
+      data.typ || "rudel";
+
+    document
+      .getElementById("titel")
+      .textContent =
+        typ === "pokemon"
+          ? "🐾 POKÉMON-KAMPF 🐾"
+          : "⚔️ RUDEL-KAMPF ⚔️";
+
+    document
+      .getElementById("linksName")
+      .textContent =
+        "@" + (data.herausforderer || "");
+
+    document
+      .getElementById("rechtsName")
+      .textContent =
+        "@" + (data.gegner || "");
+
+    document
+      .getElementById("linksRudel")
+      .textContent =
+        typ === "pokemon"
+          ? ""
+          : (data.linksRudel || "");
+
+    document
+      .getElementById("rechtsRudel")
+      .textContent =
+        typ === "pokemon"
+          ? ""
+          : (data.rechtsRudel || "");
+
+    document
+      .getElementById("linksPokemon")
+      .textContent =
+        typ === "pokemon"
+          ? (data.linksPokemon || "")
+          : "";
+
+    document
+      .getElementById("rechtsPokemon")
+      .textContent =
+        typ === "pokemon"
+          ? (data.rechtsPokemon || "")
+          : "";
+
+    const warten =
+      document.getElementById("warten");
+
+    const sieger =
+      document.getElementById("sieger");
+
+    if (data.status === "waiting") {
+      warten.textContent =
+        "⏳ WARTET AUF !ANNEHMEN";
+      sieger.textContent = "";
+    } else {
+      warten.textContent = "";
+
+      sieger.textContent =
+        data.gewinner
+          ? "🏆 Gewinner: @" + data.gewinner
+          : "";
+    }
+
+    document
+      .getElementById("kampf")
+      .style.opacity = 1;
+
+    letzterKampf = data;
+  } catch (error) {
+    console.error(
+      "Overlay:",
+      error
+    );
+  }
+}
+
+setInterval(
+  datenLaden,
+  1000
+);
+
+datenLaden();
+</script>
+</body>
+</html>
+          `);
+
+          return;
+        }
+
+        if (req.url === "/pvp-data") {
+          res.writeHead(
+            200,
+            {
+              "Content-Type":
+                "application/json; charset=utf-8",
+              "Cache-Control":
+                "no-cache, no-store, must-revalidate",
+            }
+          );
+
+          res.end(
+            JSON.stringify(
+              aktuellerPvpKampf ||
+              {
+                status: "hidden",
+              }
+            )
+          );
+
+          return;
+        }
+
+        if (req.url === "/") {
+          res.writeHead(
+            200,
+            {
+              "Content-Type":
+                "text/plain; charset=utf-8",
+            }
+          );
+
+          res.end(
+            "🦊 Fuchs-XP-Bot läuft!"
+          );
+
+          return;
+        }
+
+        res.writeHead(
+          404,
+          {
+            "Content-Type":
+              "text/plain; charset=utf-8",
+          }
+        );
+
+        res.end("404");
+      } catch (error) {
+        console.error(
+          "❌ HTTP-Fehler:",
+          error.message
+        );
+
+        res.writeHead(
+          500,
+          {
+            "Content-Type":
+              "text/plain; charset=utf-8",
+          }
+        );
+
+        res.end("500");
+      }
+    }
+  );
 let streamElementsSocket =
   null;
 
