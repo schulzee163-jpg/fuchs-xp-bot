@@ -1753,6 +1753,222 @@ datenLaden();
       }
     }
   );
+async function chatVerarbeiten(
+  message
+) {
+  if (
+    message.type ===
+    "response"
+  ) {
+    return;
+  }
+
+  if (
+    message.type !==
+    "message"
+  ) {
+    return;
+  }
+
+  if (
+    message.topic !==
+    "channel.chat.message"
+  ) {
+    return;
+  }
+
+  const data =
+    message.data;
+
+  const broadcasterChannel =
+    data?.broadcaster_user_login ||
+    data?.broadcaster_user_name ||
+    data?.broadcaster?.username ||
+    data?.broadcaster?.channel_slug;
+
+  if (broadcasterChannel) {
+    streamElementsChannel =
+      broadcasterChannel.toLowerCase();
+  }
+
+  const usernameRaw =
+    data?.chatter_user_name ||
+    data?.chatter_user_login ||
+    data?.sender?.user_name ||
+    data?.sender?.username ||
+    data?.username ||
+    data?.user?.name;
+
+  if (!usernameRaw) {
+    return;
+  }
+
+  const username =
+    usernameRaw
+      .trim()
+      .toLowerCase();
+
+  if (
+    username ===
+    "streamelements"
+  ) {
+    return;
+  }
+
+  const text =
+    data?.message?.text ||
+    data?.text ||
+    "";
+
+  console.log(
+    `💬 ${username}: ${text}`
+  );
+
+  await aktivitaetSpeichern(
+    username
+  );
+
+  const pvpMatch =
+    text.match(
+      /^!pvp\s+@?([a-zA-Z0-9_]+)$/i
+    );
+
+  if (pvpMatch) {
+    const antwort =
+      await pvpStart(
+        username,
+        pvpMatch[1]
+      );
+
+    if (antwort) {
+      await streamelementsSenden(
+        antwort
+      );
+    }
+
+    return;
+  }
+
+  const pokemonMatch =
+    text.match(
+      /^!pokemon(?:\s+(.+))?$/i
+    );
+
+  if (pokemonMatch) {
+    await streamelementsSenden(
+      await pokemonWahl(
+        username,
+        pokemonMatch[1]
+      )
+    );
+
+    return;
+  }
+
+  const pokemonKampfMatch =
+    text.match(
+      /^!pokekampf\s+@?([a-zA-Z0-9_]+)$/i
+    );
+
+  if (pokemonKampfMatch) {
+    const antwort =
+      await pokemonKampfStart(
+        username,
+        pokemonKampfMatch[1]
+      );
+
+    if (antwort) {
+      await streamelementsSenden(
+        antwort
+      );
+    }
+
+    return;
+  }
+
+  if (
+    /^!annehmen$/i.test(
+      text.trim()
+    )
+  ) {
+    const antwort =
+      await kampfAnnehmen(
+        username
+      );
+
+    if (antwort) {
+      await streamelementsSenden(
+        antwort
+      );
+    }
+
+    return;
+  }
+
+  if (
+    /^!profil$/i.test(
+      text.trim()
+    )
+  ) {
+    await streamelementsSenden(
+      await profil(
+        username
+      )
+    );
+
+    return;
+  }
+
+  const rudelMatch =
+    text.match(
+      /^!rudelwahl\s+(.+)$/i
+    );
+
+  if (rudelMatch) {
+    await streamelementsSenden(
+      await rudelwahl(
+        username,
+        rudelMatch[1]
+      )
+    );
+
+    return;
+  }
+
+  if (
+    /^!quest$/i.test(
+      text.trim()
+    )
+  ) {
+    await persoenlicheQuestAnzeigen(
+      username
+    );
+
+    return;
+  }
+
+  if (
+    /^!allebefehle$/i.test(
+      text.trim()
+    )
+  ) {
+    await alleBefehle(
+      username
+    );
+
+    return;
+  }
+
+  await questsPruefen(
+    username,
+    text
+  );
+
+  await persoenlicheQuestPruefen(
+    username,
+    text
+  );
+}
 let streamElementsSocket =
   null;
 
