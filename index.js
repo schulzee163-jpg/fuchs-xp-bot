@@ -688,6 +688,15 @@ async function pvpStart(
         Date.now(),
     }
   );
+if (gegner.toLowerCase() === "fuchsmissvegetalover2_0") {
+  const antwort = await pvpAnnehmen(gegner);
+
+  if (antwort) {
+    await streamelementsSenden(antwort);
+  }
+return;
+}
+  
 
   // Overlay zeigt, dass auf die Annahme gewartet wird.
   aktuellerPvpKampf = {
