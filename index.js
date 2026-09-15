@@ -352,6 +352,95 @@ const persoenlicheQuests = {
       "🌟 Deine persönliche Aufgabe ist: Schreibe „Mega“ 2-mal innerhalb von 60 Sekunden.",
   },
 };
+async function persoenlicheQuestsAnlegen(
+  username
+) {
+  try {
+    await rpc(
+      "persoenliche_quest_pruefen",
+      {
+        spieler_name:
+          username,
+        nachricht:
+          "",
+      }
+    );
+  } catch (error) {
+    console.error(
+      "❌ Persönliche Quests anlegen:",
+      error.message
+    );
+  }
+}
+async function persoenlicheQuestsHolen(
+  username
+) {
+  const datum =
+    new Date()
+      .toISOString()
+      .slice(0, 10);
+  try {
+    return await supabase(
+      `/rest/v1/daily_quest_assignments` +
+      `?spieler=eq.${encodeURIComponent(username)}` +
+      `&datum=eq.${datum}` +
+      `&quest_nummer=gte.6` +
+      `&quest_nummer=lte.10` +
+      `&order=quest_nummer.asc`
+    );
+  } catch (error) {
+    console.error(
+      "❌ Persönliche Quests holen:",
+      error.message
+    );
+    return [];
+  }
+}
+async function persoenlicheQuestAnzeigen(
+  username
+) {
+  try {
+    await persoenlicheQuestsAnlegen(
+      username
+    );
+    const quests =
+      await persoenlicheQuestsHolen(
+        username
+      );
+    const aktive =
+      quests.find(
+        q =>
+          !q.abgeschlossen
+      );
+    if (!aktive) {
+      await streamelementsSenden(
+        `@${username} 🎉 Du hast heute alle persönlichen Aufgaben geschafft! Komm morgen wieder für neue Aufgaben! 🦊🏆`
+      );
+      return;
+    }
+    const nummer =
+      Number(
+        aktive.quest_nummer
+      );
+    const quest =
+      persoenlicheQuests[
+        nummer
+      ];
+    if (!quest) {
+      return;
+    }
+    await streamelementsSenden(
+      `@${username} ${quest.text} → ${Number(
+        aktive.fortschritt || 0
+      )}/${quest.ziel}`
+    );
+  } catch (error) {
+    console.error(
+      "❌ Persönliche Quest anzeigen:",
+      error.message
+    );
+  }
+}
 const offeneKaempfe =
   new Map();
 let aktuellerPvpKampf =
