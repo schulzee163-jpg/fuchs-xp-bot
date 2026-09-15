@@ -1242,9 +1242,7 @@ async function pokemonKampfStart(
   );
 }
 
-    return null;
-  }
-
+    
 
   aktuellerPvpKampf = {
 
