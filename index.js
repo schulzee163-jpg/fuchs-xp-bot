@@ -2555,7 +2555,7 @@ function streamElementsVerbinden() {
 
     streamElementsSocket =
       new WebSocket(
-        "wss://pubsub.streamelements.com"
+      "wss://astro.streamelements.com"
       );
 
 
