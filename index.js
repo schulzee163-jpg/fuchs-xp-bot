@@ -58,77 +58,102 @@ async function rpc(
     }
   );
   {
-    async function streamelementsSenden(text){
-  if(!text||!String(text).trim())return false;
-
-  if(!STREAMELEMENTS_JWT){
-    console.log("⚠️ StreamElements JWT fehlt.");
+  async function streamelementsSenden(
+  text
+) {
+  if (!text || !String(text).trim()) {
     return false;
   }
 
-  const channelId=await streamElementsChannelIdHolen();
-
-  if(!channelId){
-    console.log("⚠️ StreamElements Channel-ID fehlt.");
-    return false;
-  }
-
-  try{
-    const response=await fetch(
-      `https://api.streamelements.com/kappa/v2/bot/${channelId}/say`,
-      {
-        method:"POST",
-        headers:{
-          "Authorization":`Bearer ${STREAMELEMENTS_JWT}`,
-          "Accept":"application/json",
-          "Content-Type":"application/json"
-        },
-        body:JSON.stringify({
-          message:String(text)
-        })
-      }
+  if (!STREAMELEMENTS_JWT) {
+    console.log(
+      "⚠️ StreamElements JWT fehlt."
     );
+    return false;
+  }
 
-    const body=await response.text();
+  try {
+    const channelResponse =
+      await fetch(
+        "https://api.streamelements.com/kappa/v2/channels/me",
+        {
+          method: "GET",
+          headers: {
+            Authorization:
+              `Bearer ${STREAMELEMENTS_JWT}`,
+            Accept:
+              "application/json",
+          },
+        }
+      );
+
+    const channelBody =
+      await channelResponse.text();
+
+    if (!channelResponse.ok) {
+      console.error(
+        `❌ StreamElements Channel-ID ${channelResponse.status}: ${channelBody}`
+      );
+      return false;
+    }
+
+    const channelData =
+      JSON.parse(channelBody);
+
+    const channelId =
+      channelData._id;
+
+    if (!channelId) {
+      console.error(
+        "❌ StreamElements Channel-ID konnte nicht ermittelt werden."
+      );
+      return false;
+    }
+
+    const response =
+      await fetch(
+        `https://api.streamelements.com/kappa/v2/bot/${encodeURIComponent(
+          channelId
+        )}/say`,
+        {
+          method: "POST",
+          headers: {
+            Authorization:
+              `Bearer ${STREAMELEMENTS_JWT}`,
+            "Content-Type":
+              "application/json",
+            Accept:
+              "application/json",
+          },
+          body: JSON.stringify({
+            message: String(text),
+          }),
+        }
+      );
+
+    const body =
+      await response.text();
 
     console.log(
       `📤 StreamElements Antwort ${response.status}: ${body}`
     );
 
-    if(!response.ok)return false;
+    if (!response.ok) {
+      console.error(
+        `❌ StreamElements ${response.status}: ${body}`
+      );
+      return false;
+    }
 
     return true;
-  }catch(error){
+  } catch (error) {
     console.error(
-      "❌ StreamElements senden:",
+      "❌ StreamElements Senden:",
       error.message
     );
     return false;
   }
 }
-async function aktivitaetSpeichern(
-  username
-) {
-  try {
-    await supabase(
-      "/rest/v1/fuchs_aktivitaet?on_conflict=spieler",
-      {
-        method: "POST",
-        headers: {
-          Prefer:
-            "resolution=merge-duplicates",
-        },
-        body:
-          JSON.stringify({
-            spieler:
-              username,
-            letzte_aktivitaet:
-              new Date().toISOString(),
-          }),
-      }
-    );
-  } catch (error) {
-    console.error(
       "❌ Aktivität speichern:",
       error.message
     );
