@@ -1,24 +1,35 @@
 import http from "http";
 import WebSocket from "ws";
+
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
   "https://herznunvdqcmzeffblgo.supabase.co";
+
 const SUPABASE_SERVICE_ROLE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 const STREAMELEMENTS_JWT =
   process.env.STREAMELEMENTS_JWT;
+
 let streamElementsChannel =
   process.env.STREAMELEMENTS_CHANNEL ||
   null;
+
 function headers(extra = {}) {
   return {
-    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    apikey:
+      SUPABASE_SERVICE_ROLE_KEY,
+
     Authorization:
       `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-    "Content-Type": "application/json",
+
+    "Content-Type":
+      "application/json",
+
     ...extra,
   };
 }
+
 async function supabase(
   path,
   options = {}
@@ -28,23 +39,28 @@ async function supabase(
       `${SUPABASE_URL}${path}`,
       {
         ...options,
+
         headers:
           headers(
             options.headers || {}
           ),
       }
     );
+
   const text =
     await response.text();
+
   if (!response.ok) {
     throw new Error(
       `Supabase ${response.status}: ${text}`
     );
   }
+
   return text
     ? JSON.parse(text)
     : null;
 }
+
 async function rpc(
   name,
   body = {}
@@ -53,15 +69,25 @@ async function rpc(
     `/rest/v1/rpc/${name}`,
     {
       method: "POST",
+
       body:
         JSON.stringify(body),
     }
   );
 }
+
+
+/* =====================================================
+   STREAM ELEMENTS
+   ===================================================== */
+
 async function streamelementsSenden(
   text
 ) {
-  if (!text || !String(text).trim()) {
+  if (
+    !text ||
+    !String(text).trim()
+  ) {
     return false;
   }
 
@@ -69,20 +95,58 @@ async function streamelementsSenden(
     console.log(
       "⚠️ StreamElements JWT fehlt."
     );
-    return false;
-  }
 
-  const channelId =
-    process.env.STREAMELEMENTS_CHANNEL_ID;
-
-  if (!channelId) {
-    console.log(
-      "⚠️ StreamElements Channel-ID fehlt."
-    );
     return false;
   }
 
   try {
+    const channelResponse =
+      await fetch(
+        "https://api.streamelements.com/kappa/v2/channels/me",
+        {
+          method: "GET",
+
+          headers: {
+            Authorization:
+              `Bearer ${STREAMELEMENTS_JWT}`,
+
+            Accept:
+              "application/json",
+          },
+        }
+      );
+
+    const channelBody =
+      await channelResponse.text();
+
+    if (
+      !channelResponse.ok
+    ) {
+      console.error(
+        `❌ StreamElements Channel-ID ${channelResponse.status}: ${channelBody}`
+      );
+
+      return false;
+    }
+
+    const channelData =
+      JSON.parse(channelBody);
+
+    const channelId =
+      channelData?._id;
+
+    if (!channelId) {
+      console.error(
+        "❌ StreamElements Channel-ID konnte nicht ermittelt werden."
+      );
+
+      return false;
+    }
+
+    console.log(
+      `✅ StreamElements Channel-ID gefunden: ${channelId}`
+    );
+
     const response =
       await fetch(
         `https://api.streamelements.com/kappa/v2/bot/${encodeURIComponent(
@@ -90,17 +154,23 @@ async function streamelementsSenden(
         )}/say`,
         {
           method: "POST",
+
           headers: {
             Authorization:
               `Bearer ${STREAMELEMENTS_JWT}`,
+
             "Content-Type":
               "application/json",
+
             Accept:
               "application/json",
           },
-          body: JSON.stringify({
-            message: String(text),
-          }),
+
+          body:
+            JSON.stringify({
+              message:
+                String(text),
+            }),
         }
       );
 
@@ -112,47 +182,71 @@ async function streamelementsSenden(
     );
 
     if (!response.ok) {
+      console.error(
+        `❌ StreamElements ${response.status}: ${body}`
+      );
+
       return false;
     }
 
     return true;
+
   } catch (error) {
+
     console.error(
       "❌ StreamElements senden:",
       error.message
     );
+
     return false;
   }
 }
+
+
+/* =====================================================
+   AKTIVITÄT
+   ===================================================== */
 
 async function aktivitaetSpeichern(
   username
 ) {
   try {
+
     await supabase(
       "/rest/v1/fuchs_aktivitaet?on_conflict=spieler",
       {
         method: "POST",
+
         headers: {
           Prefer:
             "resolution=merge-duplicates",
         },
+
         body:
           JSON.stringify({
             spieler:
               username,
+
             letzte_aktivitaet:
               new Date().toISOString(),
           }),
       }
     );
+
   } catch (error) {
+
     console.error(
       "❌ Aktivität speichern:",
       error.message
     );
   }
 }
+
+
+/* =====================================================
+   NORMALE QUESTS
+   ===================================================== */
+
 const normaleZiele = {
   1: 10,
   2: 5,
@@ -160,10 +254,12 @@ const normaleZiele = {
   4: 3,
   5: 2,
 };
+
 async function questsAnlegen(
   username
 ) {
   try {
+
     await rpc(
       "fuchs_quests_anlegen",
       {
@@ -171,13 +267,16 @@ async function questsAnlegen(
           username,
       }
     );
+
   } catch (error) {
+
     console.error(
       "❌ Normale Quests anlegen:",
       error.message
     );
   }
 }
+
 async function questFortschrittHolen(
   username
 ) {
@@ -185,72 +284,90 @@ async function questFortschrittHolen(
     new Date()
       .toISOString()
       .slice(0, 10);
+
   try {
+
     return await supabase(
       `/rest/v1/quest_fortschritt` +
       `?spieler=eq.${encodeURIComponent(username)}` +
       `&datum=eq.${datum}` +
       `&order=quest_nummer.asc`
     );
+
   } catch (error) {
+
     console.error(
       "❌ Quest-Fortschritt:",
       error.message
     );
+
     return [];
   }
 }
+
 async function questsPruefen(
   username,
   text
 ) {
   try {
+
     await questsAnlegen(
       username
     );
+
     const vorher =
       await questFortschrittHolen(
         username
       );
+
     await rpc(
       "quest_nachricht_verarbeiten",
       {
         spieler_name:
           username,
+
         nachricht:
           text,
       }
     );
+
     const nachher =
       await questFortschrittHolen(
         username
       );
+
     const vorherMap =
       new Map(
         vorher.map(q => [
           Number(
             q.quest_nummer
           ),
+
           Number(
             q.fortschritt || 0
           ),
         ])
       );
+
     for (
       const q of nachher
     ) {
+
       const nummer =
         Number(
           q.quest_nummer
         );
+
       const alt =
         vorherMap.get(
           nummer
         ) || 0;
+
       const neu =
         Number(
           q.fortschritt || 0
         );
+
       if (
         normaleZiele[nummer] &&
         neu >=
@@ -258,14 +375,17 @@ async function questsPruefen(
         alt <
           normaleZiele[nummer]
       ) {
+
         await streamelementsSenden(
           `@${username} ✅ Quest erfolgreich erledigt! +10 FuchsXP 🦊`
         );
       }
     }
+
     const alleFertig =
       [1, 2, 3, 4, 5]
         .every(n => {
+
           const q =
             nachher.find(
               x =>
@@ -273,6 +393,7 @@ async function questsPruefen(
                   x.quest_nummer
                 ) === n
             );
+
           return (
             q &&
             Number(
@@ -281,9 +402,11 @@ async function questsPruefen(
               normaleZiele[n]
           );
         });
+
     const vorherAlleFertig =
       [1, 2, 3, 4, 5]
         .every(n => {
+
           const q =
             vorher.find(
               x =>
@@ -291,6 +414,7 @@ async function questsPruefen(
                   x.quest_nummer
                 ) === n
             );
+
           return (
             q &&
             Number(
@@ -299,22 +423,25 @@ async function questsPruefen(
               normaleZiele[n]
           );
         });
+
     if (
       alleFertig &&
       !vorherAlleFertig
     ) {
+
       await streamelementsSenden(
         `@${username} 🏆 Du hast heute alle 5 normalen Aufgaben erledigt! 🦊`
       );
     }
+
   } catch (error) {
+
     console.error(
       "❌ Normale Quests:",
       error.message
     );
   }
-}
-const persoenlicheQuests = {
+}const persoenlicheQuests = {
   6: {
     wort:
       "gaming",
@@ -323,6 +450,7 @@ const persoenlicheQuests = {
     text:
       "🎮 Deine persönliche Aufgabe ist: Schreibe „Gaming“ 2-mal innerhalb von 60 Sekunden.",
   },
+
   7: {
     wort:
       "twitch",
@@ -331,6 +459,7 @@ const persoenlicheQuests = {
     text:
       "💜 Deine persönliche Aufgabe ist: Schreibe „Twitch“ 2-mal innerhalb von 60 Sekunden.",
   },
+
   8: {
     wort:
       "rudel",
@@ -339,6 +468,7 @@ const persoenlicheQuests = {
     text:
       "🐺 Deine persönliche Aufgabe ist: Schreibe „Rudel“ 2-mal innerhalb von 60 Sekunden.",
   },
+
   9: {
     wort:
       "hallo",
@@ -347,6 +477,7 @@ const persoenlicheQuests = {
     text:
       "👋 Deine persönliche Aufgabe ist: Schreibe „Hallo“ 3-mal innerhalb von 60 Sekunden.",
   },
+
   10: {
     wort:
       "mega",
@@ -356,104 +487,238 @@ const persoenlicheQuests = {
       "🌟 Deine persönliche Aufgabe ist: Schreibe „Mega“ 2-mal innerhalb von 60 Sekunden.",
   },
 };
+
+
+/* =====================================================
+   PERSÖNLICHE QUESTS
+   ===================================================== */
+
+const persoenlicheQuestStatus =
+  new Map();
+
+function persoenlicheQuestStatusHolen(
+  username
+) {
+  let status =
+    persoenlicheQuestStatus.get(
+      username
+    );
+
+  if (
+    !status ||
+    (
+      !status.abgeschlossen &&
+      Date.now() -
+        status.gestartet >
+        60000
+    )
+  ) {
+    const nummer =
+      6 +
+      Math.floor(
+        Math.random() *
+        Object.keys(
+          persoenlicheQuests
+        ).length
+      );
+
+    status = {
+      quest_nummer:
+        nummer,
+
+      fortschritt:
+        0,
+
+      gestartet:
+        Date.now(),
+
+      abgeschlossen:
+        false,
+    };
+
+    persoenlicheQuestStatus.set(
+      username,
+      status
+    );
+  }
+
+  return status;
+}
+
+
 async function persoenlicheQuestsAnlegen(
   username
 ) {
-  try {
-    await rpc(
-      "persoenliche_quest_pruefen",
-      {
-        spieler_name:
-          username,
-        nachricht:
-          "",
-      }
-    );
-  } catch (error) {
-    console.error(
-      "❌ Persönliche Quests anlegen:",
-      error.message
-    );
-  }
+  persoenlicheQuestStatusHolen(
+    username
+  );
 }
+
+
 async function persoenlicheQuestsHolen(
   username
 ) {
-  const datum =
-    new Date()
-      .toISOString()
-      .slice(0, 10);
-  try {
-    return await supabase(
-      `/rest/v1/daily_quest_assignments` +
-      `?spieler=eq.${encodeURIComponent(username)}` +
-      `&datum=eq.${datum}` +
-      `&quest_nummer=gte.6` +
-      `&quest_nummer=lte.10` +
-      `&order=quest_nummer.asc`
-    );
-  } catch (error) {
-    console.error(
-      "❌ Persönliche Quests holen:",
-      error.message
-    );
-    return [];
-  }
+  return [
+    persoenlicheQuestStatusHolen(
+      username
+    ),
+  ];
 }
+
+
 async function persoenlicheQuestAnzeigen(
   username
 ) {
   try {
-    await persoenlicheQuestsAnlegen(
-      username
-    );
+
     const quests =
       await persoenlicheQuestsHolen(
         username
       );
+
     const aktive =
       quests.find(
-        q => !q.abgeschlossen
+        q =>
+          !q.abgeschlossen
       );
+
     if (!aktive) {
+
       await streamelementsSenden(
         `@${username} 🎉 Du hast heute alle persönlichen Aufgaben geschafft! Komm morgen wieder für neue Aufgaben! 🦊🏆`
       );
+
       return;
     }
-    const nummer =
-      Number(
-        aktive.quest_nummer
-      );
+
     const quest =
       persoenlicheQuests[
-        nummer
+        Number(
+          aktive.quest_nummer
+        )
       ];
+
     if (!quest) {
       return;
     }
+
     await streamelementsSenden(
       `@${username} ${quest.text} → ${Number(
         aktive.fortschritt || 0
       )}/${quest.ziel}`
     );
+
   } catch (error) {
+
     console.error(
       "❌ Persönliche Quest anzeigen:",
       error.message
     );
   }
 }
+
+
+async function persoenlicheQuestPruefen(
+  username,
+  text
+) {
+  try {
+
+    const status =
+      persoenlicheQuestStatusHolen(
+        username
+      );
+
+    if (
+      status.abgeschlossen ||
+      !text
+    ) {
+      return;
+    }
+
+    const quest =
+      persoenlicheQuests[
+        Number(
+          status.quest_nummer
+        )
+      ];
+
+    if (!quest) {
+      return;
+    }
+
+    if (
+      text.trim().toLowerCase() !==
+      quest.wort.toLowerCase()
+    ) {
+      return;
+    }
+
+    status.fortschritt +=
+      1;
+
+    if (
+      status.fortschritt >=
+      quest.ziel
+    ) {
+
+      status.abgeschlossen =
+        true;
+
+      await streamelementsSenden(
+        `@${username} 🎉 Persönliche Quest geschafft! +10 FuchsXP 🦊`
+      );
+
+      try {
+
+        await rpc(
+          "fuchs_xp_hinzufuegen",
+          {
+            spieler_name:
+              username,
+
+            xp_menge:
+              10,
+          }
+        );
+
+      } catch (xpError) {
+
+        console.error(
+          "❌ Persönliche Quest XP:",
+          xpError.message
+        );
+      }
+    }
+
+  } catch (error) {
+
+    console.error(
+      "❌ Persönliche Quest prüfen:",
+      error.message
+    );
+  }
+}
+
+
+/* =====================================================
+   PVP / POKÉMON
+   ===================================================== */
+
 const offeneKaempfe =
   new Map();
+
 let aktuellerPvpKampf =
   null;
+
 const eigenePokemon = {
   fuchsmissvegetalover2_0:
     "Pikachu",
+
   vegetalover2_0:
     "Glumanda",
 };
+
 const verfuegbarePokemon = [
   "Schiggy",
   "Bisasam",
@@ -476,14 +741,20 @@ const verfuegbarePokemon = [
   "Raupy",
   "Sterndu",
 ];
+
+
 function pokemonNameNormalisieren(
   name
 ) {
   if (!name) {
     return null;
   }
+
   const gesucht =
-    name.trim().toLowerCase();
+    name
+      .trim()
+      .toLowerCase();
+
   const festesPokemon =
     Object.values(
       eigenePokemon
@@ -492,36 +763,49 @@ function pokemonNameNormalisieren(
         pokemon.toLowerCase() ===
         gesucht
     );
+
   if (festesPokemon) {
     return festesPokemon;
   }
+
   const gefunden =
     verfuegbarePokemon.find(
       pokemon =>
         pokemon.toLowerCase() ===
         gesucht
     );
+
   return gefunden || null;
 }
+
+
 async function spielerProfilHolen(
   username
 ) {
   try {
+
     const rows =
       await supabase(
         `/rest/v1/fuchsprofile` +
         `?spieler=eq.${encodeURIComponent(username)}` +
         `&limit=1`
       );
-    return rows?.[0] || null;
+
+    return rows?.[0] ||
+      null;
+
   } catch (error) {
+
     console.error(
       "❌ Profil holen:",
       error.message
     );
+
     return null;
   }
 }
+
+
 async function pokemonHolen(
   username
 ) {
@@ -529,18 +813,23 @@ async function pokemonHolen(
     eigenePokemon[
       username.toLowerCase()
     ];
+
   if (festesPokemon) {
     return festesPokemon;
   }
+
   const profil =
     await spielerProfilHolen(
       username
     );
+
   return (
     profil?.pokemon ||
     null
   );
 }
+
+
 function rudelHolen(
   profil
 ) {
@@ -549,19 +838,24 @@ function rudelHolen(
     "🐺 Noch kein Rudel"
   );
 }
+
+
 async function pokemonWahl(
   username,
   pokemon
 ) {
   if (!pokemon) {
+
     const vergeben =
       new Set(
         Object.values(
           eigenePokemon
         ).map(
-          p => p.toLowerCase()
+          p =>
+            p.toLowerCase()
         )
       );
+
     const freie =
       verfuegbarePokemon.filter(
         p =>
@@ -569,19 +863,24 @@ async function pokemonWahl(
             p.toLowerCase()
           )
       );
+
     return (
       `@${username} 🐾 Zuschauer, wähle dein Pokémon mit !pokemon NAME | ⚡ Pikachu ist für Fuchsmissvegetalover2_0 vergeben | 🔥 Glumanda ist für vegetalover2_0 vergeben | Frei: ${freie.join(", ")}`
     );
   }
+
   const gewaehltesPokemon =
     pokemonNameNormalisieren(
       pokemon
     );
+
   if (!gewaehltesPokemon) {
+
     return (
       `@${username} ❌ Dieses Pokémon gibt es nicht in der Auswahl. Schreibe !pokemon für die Liste.`
     );
   }
+
   const festVergebenVon =
     Object.entries(
       eigenePokemon
@@ -590,16 +889,17 @@ async function pokemonWahl(
         p.toLowerCase() ===
         gewaehltesPokemon.toLowerCase()
     );
+
   if (
     festVergebenVon &&
     festVergebenVon[0].toLowerCase() !==
       username.toLowerCase()
   ) {
+
     return (
       `@${username} ❌ ${gewaehltesPokemon} ist bereits vergeben. Bitte wähle ein anderes Pokémon.`
     );
-  }
-  try {
+  }  try {
     const rows =
       await supabase(
         `/rest/v1/fuchsprofile` +
@@ -608,6 +908,7 @@ async function pokemonWahl(
         )}` +
         `&select=spieler,pokemon`
       );
+
     const andererSpieler =
       rows?.find(
         row =>
@@ -615,6 +916,7 @@ async function pokemonWahl(
           row.spieler.toLowerCase() !==
             username.toLowerCase()
       );
+
     if (andererSpieler) {
       return (
         `@${username} ❌ ${gewaehltesPokemon} ist bereits von @${andererSpieler.spieler} vergeben. Bitte wähle ein anderes Pokémon.`
@@ -626,6 +928,7 @@ async function pokemonWahl(
       error.message
     );
   }
+
   try {
     await supabase(
       "/rest/v1/fuchsprofile?on_conflict=spieler",
@@ -644,6 +947,7 @@ async function pokemonWahl(
           }),
       }
     );
+
     return (
       `@${username} 🐾 Dein Pokémon ist jetzt ${gewaehltesPokemon}!`
     );
@@ -652,11 +956,13 @@ async function pokemonWahl(
       "❌ Pokémon speichern:",
       error.message
     );
+
     return (
       `@${username} ❌ Dein Pokémon konnte nicht gespeichert werden.`
     );
   }
 }
+
 async function pvpStart(
   username,
   gegner
@@ -670,14 +976,17 @@ async function pvpStart(
       `@${username} Du kannst dich nicht selbst herausfordern.`
     );
   }
+
   const linksProfil =
     await spielerProfilHolen(
       username
     );
+
   const rechtsProfil =
     await spielerProfilHolen(
       gegner
     );
+
   offeneKaempfe.set(
     gegner.toLowerCase(),
     {
@@ -699,6 +1008,7 @@ async function pvpStart(
         Date.now(),
     }
   );
+
   if (
     gegner.toLowerCase() ===
     "fuchsmissvegetalover2_0"
@@ -707,6 +1017,7 @@ async function pvpStart(
       gegner
     );
   }
+
   aktuellerPvpKampf = {
     status:
       "waiting",
@@ -719,10 +1030,12 @@ async function pvpStart(
     gestartet:
       Date.now(),
   };
+
   return (
     `⚔️ @${username} fordert @${gegner} zum Rudel-PvP heraus! @${gegner} hat 60 Sekunden Zeit mit !annehmen zu antworten!`
   );
 }
+
 async function kampfAnnehmen(
   username
 ) {
@@ -730,9 +1043,11 @@ async function kampfAnnehmen(
     offeneKaempfe.get(
       username.toLowerCase()
     );
+
   if (!kampf) {
     return null;
   }
+
   if (
     Date.now() -
       kampf.erstellt >
@@ -741,59 +1056,74 @@ async function kampfAnnehmen(
     offeneKaempfe.delete(
       username.toLowerCase()
     );
+
     aktuellerPvpKampf =
       null;
+
     return (
       `@${username} Die Herausforderung ist abgelaufen.`
     );
   }
+
   offeneKaempfe.delete(
     username.toLowerCase()
   );
+
   const gewinner =
     Math.random() <
     0.5
       ? kampf.herausforderer
       : username;
+
   const verlierer =
     gewinner ===
     kampf.herausforderer
       ? username
       : kampf.herausforderer;
+
   const istPokemon =
     kampf.typ ===
     "pokemon";
+
   const linksProfil =
     await spielerProfilHolen(
       kampf.herausforderer
     );
+
   const rechtsProfil =
     await spielerProfilHolen(
       username
     );
+
   let linksRudel =
     linksProfil?.rudel ||
     "🐺 Noch kein Rudel";
+
   let rechtsRudel =
     rechtsProfil?.rudel ||
     "🐺 Noch kein Rudel";
+
   let linksPokemon =
     linksProfil?.pokemon ||
     null;
+
   let rechtsPokemon =
     rechtsProfil?.pokemon ||
     null;
+
   if (istPokemon) {
     linksPokemon =
       linksPokemon ||
       await pokemonHolen(
         kampf.herausforderer
       );
+
     rechtsPokemon =
       rechtsPokemon ||
       await pokemonHolen(
         username
       );
+
     if (
       !linksPokemon ||
       !rechtsPokemon
@@ -803,6 +1133,7 @@ async function kampfAnnehmen(
       );
     }
   }
+
   aktuellerPvpKampf = {
     status:
       "fight",
@@ -835,6 +1166,7 @@ async function kampfAnnehmen(
     gestartet:
       Date.now(),
   };
+
   await rpc(
     "fuchs_xp_hinzufuegen",
     {
@@ -844,6 +1176,7 @@ async function kampfAnnehmen(
         100,
     }
   );
+
   try {
     const sieg =
       await supabase(
@@ -853,6 +1186,7 @@ async function kampfAnnehmen(
         )}` +
         `&select=pvp_siege&limit=1`
       );
+
     await supabase(
       `/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
         gewinner
@@ -871,6 +1205,7 @@ async function kampfAnnehmen(
           }),
       }
     );
+
     const niederlage =
       await supabase(
         `/rest/v1/fuchsprofile` +
@@ -879,6 +1214,7 @@ async function kampfAnnehmen(
         )}` +
         `&select=pvp_niederlagen&limit=1`
       );
+
     await supabase(
       `/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
         verlierer
@@ -903,15 +1239,18 @@ async function kampfAnnehmen(
       error.message
     );
   }
+
   if (istPokemon) {
     return (
       `🐾⚔️ POKÉMON-KAMPF! @${kampf.herausforderer} ${linksPokemon} 🆚 ${rechtsPokemon} @${username} | 🏆 Gewinner: @${gewinner}! +100 FuchsXP 🦊 | 💀 @${verlierer} verliert.`
     );
   }
+
   return (
     `⚔️ RUDEL-PVP! @${kampf.herausforderer} ${linksRudel} 🆚 ${rechtsRudel} @${username} | 🏆 Gewinner: @${gewinner}! +100 FuchsXP 🦊 | 💀 @${verlierer} verliert.`
   );
 }
+
 async function pokemonKampfStart(
   username,
   gegner
@@ -930,6 +1269,7 @@ async function pokemonKampfStart(
     await pokemonHolen(
       username
     );
+
   const rechtsPokemon =
     await pokemonHolen(
       gegner
@@ -994,9 +1334,7 @@ async function pokemonKampfStart(
   return (
     `🐾⚔️ @${username} fordert @${gegner} zum Pokémon-Kampf heraus! @${gegner} hat 60 Sekunden Zeit mit !annehmen zu antworten!`
   );
-}
-
-async function pvpAnnehmen(
+}async function pvpAnnehmen(
   username
 ) {
   return kampfAnnehmen(
@@ -1264,9 +1602,7 @@ async function chatVerarbeiten(
     data?.broadcaster?.username ||
     data?.broadcaster?.channel_slug;
 
-  if (
-    broadcasterChannel
-  ) {
+  if (broadcasterChannel) {
     streamElementsChannel =
       broadcasterChannel.toLowerCase();
   }
@@ -1448,24 +1784,23 @@ async function chatVerarbeiten(
     username,
     text
   );
-}
-const server =
-  http.createServer(
-    async (req, res) => {
-      try {
-        if (
-          req.url ===
-          "/pvp"
-        ) {
-          res.writeHead(
-            200,
-            {
-              "Content-Type":
-                "text/html; charset=utf-8",
-            }
-          );
+}  const server =
+    http.createServer(
+      async (req, res) => {
+        try {
+          if (
+            req.url ===
+            "/pvp"
+          ) {
+            res.writeHead(
+              200,
+              {
+                "Content-Type":
+                  "text/html; charset=utf-8",
+              }
+            );
 
-          res.end(`
+            res.end(`
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -1565,331 +1900,7 @@ body {
   display:
     flex;
   align-items:
-    center;
-  justify-content:
-    space-between;
-  gap:
-    20px;
-}
-.spieler {
-  flex:
-    1;
-  min-width:
-    0;
-}
-.name {
-  font-size:
-    28px;
-  font-weight:
-    800;
-  margin-bottom:
-    10px;
-  overflow:
-    hidden;
-  text-overflow:
-    ellipsis;
-}
-.rudel,
-.pokemon {
-  font-size:
-    24px;
-  margin:
-    8px
-    0;
-}
-.vs {
-  font-size:
-    42px;
-  font-weight:
-    900;
-  flex:
-    0
-    0
-    auto;
-}
-.sieger {
-  margin-top:
-    22px;
-  font-size:
-    26px;
-  font-weight:
-    800;
-}
-.warten {
-  font-size:
-    28px;
-  font-weight:
-    800;
-  margin-top:
-    20px;
-}
-</style>
-</head>
-<body>
-
-<div id="kampf">
-  <div class="box">
-
-    <div
-      id="titel"
-      class="titel"
-    >
-      ⚔️ RUDEL-KAMPF ⚔️
-    </div>
-
-    <div class="kaempfer">
-
-      <div class="spieler">
-        <div
-          id="linksName"
-          class="name"
-        >
-        </div>
-
-        <div
-          id="linksRudel"
-          class="rudel"
-        >
-        </div>
-
-        <div
-          id="linksPokemon"
-          class="pokemon"
-        >
-        </div>
-      </div>
-
-      <div
-        id="vs"
-        class="vs"
-      >
-        🆚
-      </div>
-
-      <div class="spieler">
-
-        <div
-          id="rechtsName"
-          class="name"
-        >
-        </div>
-
-        <div
-          id="rechtsRudel"
-          class="rudel"
-        >
-        </div>
-
-        <div
-          id="rechtsPokemon"
-          class="pokemon"
-        >
-        </div>
-
-      </div>
-
-    </div>
-
-    <div
-      id="warten"
-      class="warten"
-    >
-    </div>
-
-    <div
-      id="sieger"
-      class="sieger"
-    >
-    </div>
-
-  </div>
-</div>
-
-<script>
-
-let letzterKampf =
-  null;
-
-async function datenLaden() {
-
-  try {
-
-    const response =
-      await fetch(
-        "/pvp-data"
-      );
-
-    if (
-      !response.ok
-    ) {
-      return;
-    }
-
-    const data =
-      await response.json();
-
-    if (
-      !data ||
-      !data.status
-    ) {
-
-      document
-        .getElementById(
-          "kampf"
-        )
-        .style.opacity = 0;
-
-      return;
-    }
-
-    const typ =
-      data.typ ||
-      "pvp";
-
-    const kampfNeu =
-      JSON.stringify(
-        data
-      ) !==
-      JSON.stringify(
-        letzterKampf
-      );
-
-    if (
-      kampfNeu
-    ) {
-
-      letzterKampf =
-        data;
-
-      document
-        .getElementById(
-          "titel"
-        )
-        .textContent =
-          typ ===
-          "pokemon"
-            ? "🐾 POKÉMON-KAMPF 🐾"
-            : "⚔️ RUDEL-KAMPF ⚔️";
-
-      document
-        .getElementById(
-          "linksName"
-        )
-        .textContent =
-          "@" +
-          (
-            data.herausforderer ||
-            ""
-          );
-
-      document
-        .getElementById(
-          "rechtsName"
-        )
-        .textContent =
-          "@" +
-          (
-            data.gegner ||
-            ""
-          );
-
-      document
-        .getElementById(
-          "linksRudel"
-        )
-        .textContent =
-          typ ===
-          "pokemon"
-            ? ""
-            : (
-                data.linksRudel ||
-                ""
-              );
-
-      document
-        .getElementById(
-          "rechtsRudel"
-        )
-        .textContent =
-          typ ===
-          "pokemon"
-            ? ""
-            : (
-                data.rechtsRudel ||
-                ""
-              );
-
-      document
-        .getElementById(
-          "linksPokemon"
-        )
-        .textContent =
-          typ ===
-          "pokemon"
-            ? (
-                data.linksPokemon ||
-                ""
-              )
-            : "";
-
-      document
-        .getElementById(
-          "rechtsPokemon"
-        )
-        .textContent =
-          typ ===
-          "pokemon"
-            ? (
-                data.rechtsPokemon ||
-                ""
-              )
-            : "";
-
-      const warten =
-        document
-          .getElementById(
-            "warten"
-          );
-
-      const sieger =
-        document
-          .getElementById(
-            "sieger"
-          );
-
-      if (
-        data.status ===
-        "waiting"
-      ) {
-
-        warten.textContent =
-          "⏳ WARTET AUF !ANNEHMEN";
-
-        sieger.textContent =
-          "";
-
-      } else {
-
-        warten.textContent =
-          "";
-
-        if (
-          data.gewinner
-        ) {
-
-          sieger.textContent =
-            "🏆 Gewinner: @" +
-            data.gewinner;
-
-        } else {
-
-          sieger.textContent =
-            "";
-
-        }
-
-      }
-
+    center;      }
     }
 
     document
@@ -2007,6 +2018,7 @@ datenLaden();
       }
     }
   );
+
 let streamElementsSocket =
   null;
 
@@ -2143,6 +2155,7 @@ function streamElementsVerbinden() {
       streamElementsVerbinden,
       5000
     );
+
   }
 }
 
@@ -2164,4 +2177,5 @@ server.listen(
     streamElementsVerbinden();
   }
 );
+
 // Ende der index.js
