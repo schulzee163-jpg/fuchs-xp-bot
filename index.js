@@ -1234,21 +1234,13 @@ async function pokemonKampfStart(
   // ===================================================
 
   if (
-    gegner.toLowerCase() ===
-    "fuchsmissvegetalover2_0"
-  ) {
-
-    const antwort =
-      await kampfAnnehmen(
-        gegner
-      );
-
-    if (antwort) {
-
-      await streamelementsSenden(
-        antwort
-      );
-    }
+  gegner.toLowerCase() ===
+  "fuchsmissvegetalover2_0"
+) {
+  return await kampfAnnehmen(
+    gegner
+  );
+}
 
     return null;
   }
