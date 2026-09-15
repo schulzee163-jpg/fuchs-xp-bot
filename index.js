@@ -1517,6 +1517,27 @@ body {
 .spieler {
   flex: 1;
   min-width: 0;
+  .figur {
+  font-size: 80px;
+  margin: 15px 0;
+  transition: transform 0.8s ease;
+}
+
+.links .figur {
+  transform: translateX(0);
+}
+
+.rechts .figur {
+  transform: translateX(0);
+}
+
+.angriff .links .figur {
+  transform: translateX(100px);
+}
+
+.angriff .rechts .figur {
+  transform: translateX(-100px);
+}
 }
 .name {
   font-size: 28px;
@@ -1549,22 +1570,33 @@ body {
     <div id="titel" class="titel">
       ⚔️ RUDEL-KAMPF ⚔️
     </div>
+<div class="kaempfer">
 
-    <div class="kaempfer">
-      <div class="spieler">
-        <div id="linksName" class="name"></div>
-        <div id="linksRudel" class="rudel"></div>
-        <div id="linksPokemon" class="pokemon"></div>
-      </div>
+  <div class="spieler links">
+    <div id="linksName" class="name"></div>
 
-      <div class="vs">VS</div>
-
-      <div class="spieler">
-        <div id="rechtsName" class="name"></div>
-        <div id="rechtsRudel" class="rudel"></div>
-        <div id="rechtsPokemon" class="pokemon"></div>
-      </div>
+    <div id="linksFigur" class="figur">
+      🐺
     </div>
+
+    <div id="linksRudel" class="rudel"></div>
+    <div id="linksPokemon" class="pokemon"></div>
+  </div>
+
+  <div class="vs">⚔️<br>VS</div>
+
+  <div class="spieler rechts">
+    <div id="rechtsName" class="name"></div>
+
+    <div id="rechtsFigur" class="figur">
+      🐺
+    </div>
+
+    <div id="rechtsRudel" class="rudel"></div>
+    <div id="rechtsPokemon" class="pokemon"></div>
+  </div>
+
+</div>
 
     <div id="warten" class="warten"></div>
     <div id="sieger" class="sieger"></div>
@@ -1640,7 +1672,25 @@ async function datenLaden() {
         typ === "pokemon"
           ? (data.rechtsPokemon || "")
           : "";
+const neuerKampf =
+  data.status === "fight" &&
+  data.id &&
+  data.id !== letzterKampf?.id;
 
+if (neuerKampf) {
+  const kampfBox =
+    document.getElementById("kampf");
+
+  kampfBox.classList.remove("angriff");
+
+  void kampfBox.offsetWidth;
+
+  kampfBox.classList.add("angriff");
+
+  setTimeout(() => {
+    kampfBox.classList.remove("angriff");
+  }, 900);
+}
     const warten =
       document.getElementById("warten");
 
