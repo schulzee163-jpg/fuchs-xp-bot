@@ -688,7 +688,7 @@ async function pvpStart(
         Date.now(),
     }
   );
-if (gegner.toLowerCase() === "fuchsmissvegetalover2_0") {
+if (username.toLowerCase() === "fuchsmissvegetalover2_0") {
   const antwort = await pvpAnnehmen(gegner);
 
   if (antwort) {
