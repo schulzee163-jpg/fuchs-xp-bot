@@ -57,63 +57,48 @@ async function rpc(
         JSON.stringify(body),
     }
   );
-}
-async function streamelementsSenden(
-  text
-) {
-  if (!text || !String(text).trim()) {
+  {
+    async function streamelementsSenden(text){
+  if(!text||!String(text).trim())return false;
+
+  if(!STREAMELEMENTS_JWT){
+    console.log("⚠️ StreamElements JWT fehlt.");
     return false;
   }
-  if (!STREAMELEMENTS_JWT) {
-    console.log(
-      "⚠️ StreamElements JWT fehlt."
-    );
+
+  const channelId=await streamElementsChannelIdHolen();
+
+  if(!channelId){
+    console.log("⚠️ StreamElements Channel-ID fehlt.");
     return false;
   }
-  const channel =
-    streamElementsChannel ||
-    process.env.STREAMELEMENTS_CHANNEL;
-  if (!channel) {
-    console.log(
-      "⚠️ StreamElements Kanalname fehlt."
+
+  try{
+    const response=await fetch(
+      `https://api.streamelements.com/kappa/v2/bot/${channelId}/say`,
+      {
+        method:"POST",
+        headers:{
+          "Authorization":`Bearer ${STREAMELEMENTS_JWT}`,
+          "Accept":"application/json",
+          "Content-Type":"application/json"
+        },
+        body:JSON.stringify({
+          message:String(text)
+        })
+      }
     );
-    return false;
-  }
-  try {
-    const response =
-      await fetch(
-        `https://api.streamelements.com/kappa/v2/bot/${encodeURIComponent(
-          channel
-        )}/say`,
-        {
-          method: "POST",
-          headers: {
-            Authorization:
-              `Bearer ${STREAMELEMENTS_JWT}`,
-            "Content-Type":
-              "application/json",
-            Accept:
-              "application/json",
-          },
-          body:
-            JSON.stringify({
-              message: String(text),
-            }),
-        }
-      );
-    const body =
-      await response.text();
-    if (!response.ok) {
-      console.error(
-        `❌ StreamElements ${response.status}: ${body}`
-      );
-      return false;
-    }
+
+    const body=await response.text();
+
     console.log(
-      `📤 StreamElements @${channel}: ${text}`
+      `📤 StreamElements Antwort ${response.status}: ${body}`
     );
+
+    if(!response.ok)return false;
+
     return true;
-  } catch (error) {
+  }catch(error){
     console.error(
       "❌ StreamElements senden:",
       error.message
