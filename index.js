@@ -158,7 +158,7 @@ async function streamelementsSenden(text) {
   }
 
   try {
-    let channelId =
+    const channelId =
       await streamElementsChannelHolen();
 
     if (!channelId) {
@@ -396,7 +396,6 @@ async function questsPruefen(
 
 /* =====================================================
    PERSÖNLICHE QUESTS
-   NUR EINMAL DEFINIERT
 ===================================================== */
 
 const persoenlicheQuestStatus =
@@ -536,11 +535,6 @@ async function persoenlicheQuestPruefen(
     return;
   }
 
-  /*
-     Die persönliche Quest zählt hier
-     nur Chat-Nachrichten.
-  */
-
   quest.fortschritt++;
 
   if (
@@ -584,6 +578,7 @@ async function persoenlicheQuestPruefen(
 const eigenePokemon = {
   fuchsmissvegetalover2_0:
     "Pikachu",
+
   vegetalover2_0:
     "Glumanda",
 };
@@ -672,6 +667,7 @@ async function spielerProfilHolen(
       "❌ Profil:",
       error.message
     );
+
     return null;
   }
 }
@@ -702,7 +698,28 @@ async function pokemonHolen(
       name
     );
 
-  return profil?.pokemon || null;
+  return (
+    profil?.pokemon ||
+    null
+  );
+}
+
+async function pokemonSicherHolen(
+  username
+) {
+  const pokemon =
+    await pokemonHolen(
+      username
+    );
+
+  return (
+    pokemonNameNormalisieren(
+      pokemon
+    ) ||
+    String(pokemon || "")
+      .trim() ||
+    null
+  );
 }
 
 function rudelHolen(
@@ -897,10 +914,13 @@ async function pokemonWahl(
 const rudelMap = {
   feuer:
     "🔥 Feuerrudel",
+
   wasser:
     "🌊 Wasserrudel",
+
   wald:
     "🌲 Waldrudel",
+
   ice:
     "🧊 ICErudel",
 };
@@ -976,6 +996,11 @@ const offeneKaempfe =
 let aktuellerPvpKampf =
   null;
 
+
+/* =====================================================
+   RUDEL-PVP START
+===================================================== */
+
 async function pvpStart(
   angreifer,
   verteidiger
@@ -1032,10 +1057,17 @@ async function pvpStart(
   offeneKaempfe.set(
     verteidiger,
     {
-      angreifer,
-      verteidiger,
-      typ: "rudel",
-      erstellt: Date.now(),
+      angreifer:
+        angreifer,
+
+      verteidiger:
+        verteidiger,
+
+      typ:
+        "rudel",
+
+      erstellt:
+        Date.now(),
     }
   );
 
@@ -1052,6 +1084,11 @@ async function pvpStart(
     `⚔️ @${angreifer} fordert @${verteidiger} zum Rudel-Kampf heraus! @${verteidiger} kann mit !annehmen annehmen.`
   );
 }
+
+
+/* =====================================================
+   POKÉMON-KAMPF START
+===================================================== */
 
 async function pokemonKampfStart(
   angreifer,
@@ -1088,13 +1125,17 @@ async function pokemonKampfStart(
     );
   }
 
+  /*
+     Pokémon direkt vor dem Kampf holen.
+  */
+
   const pokemonA =
-    await pokemonHolen(
+    await pokemonSicherHolen(
       angreifer
     );
 
   const pokemonV =
-    await pokemonHolen(
+    await pokemonSicherHolen(
       verteidiger
     );
 
@@ -1116,19 +1157,35 @@ async function pokemonKampfStart(
     );
   }
 
+  /*
+     WICHTIG:
+     Spieler und Pokémon werden vollständig
+     in der Kampf-Anfrage gespeichert.
+  */
+
+  const neuerKampf = {
+    angreifer:
+      angreifer,
+
+    verteidiger:
+      verteidiger,
+
+    typ:
+      "pokemon",
+
+    angreiferPokemon:
+      pokemonA,
+
+    verteidigerPokemon:
+      pokemonV,
+
+    erstellt:
+      Date.now(),
+  };
+
   offeneKaempfe.set(
     verteidiger,
-    {
-      angreifer,
-      verteidiger,
-      typ: "pokemon",
-      angreiferPokemon:
-        pokemonA,
-      verteidigerPokemon:
-        pokemonV,
-      erstellt:
-        Date.now(),
-    }
+    neuerKampf
   );
 
   if (
@@ -1144,6 +1201,11 @@ async function pokemonKampfStart(
     `🐾⚔️ @${angreifer} fordert @${verteidiger} zum Pokémon-Kampf heraus! @${verteidiger} kann mit !annehmen annehmen.`
   );
 }
+
+
+/* =====================================================
+   KAMPF ANNEHMEN
+===================================================== */
 
 async function kampfAnnehmen(
   username
@@ -1176,18 +1238,37 @@ async function kampfAnnehmen(
     );
   }
 
+  /*
+     Kampf-Anfrage entfernen.
+  */
+
   offeneKaempfe.delete(
     username
   );
 
+  /*
+     Die Namen kommen DIREKT aus der
+     Kampf-Anfrage.
+  */
+
+  const angreiferName =
+    normalisieren(
+      kampf.angreifer
+    );
+
+  const verteidigerName =
+    normalisieren(
+      kampf.verteidiger
+    );
+
   const a =
     await pvpProfil(
-      kampf.angreifer
+      angreiferName
     );
 
   const v =
     await pvpProfil(
-      kampf.verteidiger
+      verteidigerName
     );
 
   if (!a || !v) {
@@ -1196,43 +1277,133 @@ async function kampfAnnehmen(
     );
   }
 
-  const gewinner =
-    Math.random() < 0.5
-      ? a
-      : v;
+  /*
+     Pokémon ebenfalls direkt aus der
+     Kampf-Anfrage verwenden.
 
-  const verlierer =
-    gewinner.spieler ===
-    a.spieler
-      ? v
-      : a;
+     Falls sie fehlen, zusätzlich aus
+     dem Profil holen.
+  */
+
+  let angreiferPokemon =
+    kampf.angreiferPokemon ||
+    null;
+
+  let verteidigerPokemon =
+    kampf.verteidigerPokemon ||
+    null;
+
+  if (
+    kampf.typ ===
+    "pokemon"
+  ) {
+    if (!angreiferPokemon) {
+      angreiferPokemon =
+        await pokemonSicherHolen(
+          angreiferName
+        );
+    }
+
+    if (!verteidigerPokemon) {
+      verteidigerPokemon =
+        await pokemonSicherHolen(
+          verteidigerName
+        );
+    }
+
+    if (!angreiferPokemon) {
+      return (
+        `❌ @${angreiferName} hat kein Pokémon.`
+      );
+    }
+
+    if (!verteidigerPokemon) {
+      return (
+        `❌ @${verteidigerName} hat kein Pokémon.`
+      );
+    }
+  }
+
+  /*
+     Zufälligen Gewinner bestimmen.
+  */
+
+  const gewinnerIstAngreifer =
+    Math.random() < 0.5;
+
+  const gewinnerName =
+    gewinnerIstAngreifer
+      ? angreiferName
+      : verteidigerName;
+
+  const verliererName =
+    gewinnerIstAngreifer
+      ? verteidigerName
+      : angreiferName;
+
+  /*
+     Aktuellen Kampf speichern.
+  */
 
   aktuellerPvpKampf = {
-    ...kampf,
+    angreifer:
+      angreiferName,
+
+    verteidiger:
+      verteidigerName,
+
+    typ:
+      kampf.typ,
+
+    angreiferPokemon:
+      angreiferPokemon,
+
+    verteidigerPokemon:
+      verteidigerPokemon,
+
+    angreiferRudel:
+      a.rudel || "",
+
+    verteidigerRudel:
+      v.rudel || "",
+
     gewinner:
-      gewinner.spieler,
+      gewinnerName,
+
     verlierer:
-      verlierer.spieler,
+      verliererName,
+
     gestartet:
       Date.now(),
   };
 
+  /*
+     Gewinner bekommt 100 XP.
+  */
+
   await xpHinzufuegen(
-    gewinner.spieler,
+    gewinnerName,
     100
   );
+
+  /*
+     PvP Statistik aktualisieren.
+  */
 
   try {
     await supabase(
       `/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
-        gewinner.spieler
+        gewinnerName
       )}`,
       {
         method: "PATCH",
         body: JSON.stringify({
           pvp_siege:
             Number(
-              gewinner.pvp_siege || 0
+              a.spieler ===
+                gewinnerName
+                ? a.pvp_siege || 0
+                : v.pvp_siege || 0
             ) + 1,
         }),
       }
@@ -1240,14 +1411,17 @@ async function kampfAnnehmen(
 
     await supabase(
       `/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
-        verlierer.spieler
+        verliererName
       )}`,
       {
         method: "PATCH",
         body: JSON.stringify({
           pvp_niederlagen:
             Number(
-              verlierer.pvp_niederlagen || 0
+              a.spieler ===
+                verliererName
+                ? a.pvp_niederlagen || 0
+                : v.pvp_niederlagen || 0
             ) + 1,
         }),
       }
@@ -1258,17 +1432,26 @@ async function kampfAnnehmen(
       error.message
     );
   }
-if (
-  kampf.typ ===
-  "pokemon"
-) {
-  return (
-    `⚡ POKÉMON-KAMPF! @${a.spieler} ${kampf.angreiferPokemon} ⚔️ @${v.spieler} ${kampf.verteidigerPokemon} → 🏆`
-  );
-}
+
+  /*
+     POKÉMON-KAMPF
+  */
+
+  if (
+    kampf.typ ===
+    "pokemon"
+  ) {
+    return (
+      `⚡ POKÉMON-KAMPF! @${angreiferName} ${angreiferPokemon} ⚔️ @${verteidigerName} ${verteidigerPokemon} → 🏆 @${gewinnerName} gewinnt +100 XP!`
+    );
+  }
+
+  /*
+     NORMALES RUDEL-PvP
+  */
 
   return (
-    `⚔️ RUDEL-KAMPF! @${a.spieler} [${a.rudel}] ⚔️ @${v.spieler} [${v.rudel}] → 🏆 @${gewinner.spieler} gewinnt +100 XP!`
+    `⚔️ RUDEL-KAMPF! @${angreiferName} [${a.rudel || "kein Rudel"}] ⚔️ @${verteidigerName} [${v.rudel || "kein Rudel"}] → 🏆 @${gewinnerName} gewinnt +100 XP!`
   );
 }
 
@@ -1354,6 +1537,10 @@ async function chatVerarbeiten(
     username
   );
 
+  /*
+     !PVP
+  */
+
   const pvpMatch =
     text.match(
       /^!pvp\s+@?([a-zA-Z0-9_]+)$/i
@@ -1375,6 +1562,10 @@ async function chatVerarbeiten(
     return;
   }
 
+  /*
+     !POKEMON
+  */
+
   const pokemonMatch =
     text.match(
       /^!pokemon(?:\s+(.+))?$/i
@@ -1390,6 +1581,10 @@ async function chatVerarbeiten(
 
     return;
   }
+
+  /*
+     !POKEKAMPF
+  */
 
   const pokemonKampfMatch =
     text.match(
@@ -1412,6 +1607,10 @@ async function chatVerarbeiten(
     return;
   }
 
+  /*
+     !ANNEHMEN
+  */
+
   if (
     /^!annehmen$/i.test(
       text.trim()
@@ -1431,6 +1630,10 @@ async function chatVerarbeiten(
     return;
   }
 
+  /*
+     !PROFIL
+  */
+
   if (
     /^!profil$/i.test(
       text.trim()
@@ -1444,6 +1647,10 @@ async function chatVerarbeiten(
 
     return;
   }
+
+  /*
+     !RUDELWAHL
+  */
 
   const rudelMatch =
     text.match(
@@ -1461,6 +1668,10 @@ async function chatVerarbeiten(
     return;
   }
 
+  /*
+     !QUEST
+  */
+
   if (
     /^!quest$/i.test(
       text.trim()
@@ -1473,6 +1684,10 @@ async function chatVerarbeiten(
     return;
   }
 
+  /*
+     !ALLEBEFEHLE
+  */
+
   if (
     /^!allebefehle$/i.test(
       text.trim()
@@ -1484,6 +1699,10 @@ async function chatVerarbeiten(
 
     return;
   }
+
+  /*
+     NORMALE CHAT-NACHRICHT
+  */
 
   await questsPruefen(
     username,
@@ -1505,6 +1724,11 @@ const server =
   http.createServer(
     async (req, res) => {
       try {
+
+        /*
+           STARTSEITE
+        */
+
         if (req.url === "/") {
           res.writeHead(
             200,
@@ -1521,12 +1745,18 @@ const server =
           return;
         }
 
+
+        /*
+           PVP-DATEN
+        */
+
         if (req.url === "/pvp-data") {
           res.writeHead(
             200,
             {
               "Content-Type":
                 "application/json; charset=utf-8",
+
               "Cache-Control":
                 "no-store",
             }
@@ -1535,42 +1765,54 @@ const server =
           if (!aktuellerPvpKampf) {
             res.end(
               JSON.stringify({
-                kampf: null,
+                kampf:
+                  null,
               })
             );
+
             return;
           }
 
-          const a =
-            await pvpProfil(
-              aktuellerPvpKampf
-                .angreifer
-            );
-
-          const v =
-            await pvpProfil(
-              aktuellerPvpKampf
-                .verteidiger
-            );
+          /*
+             Die Kampf-Daten werden direkt
+             aus aktuellerPvpKampf verwendet.
+          */
 
           res.end(
             JSON.stringify({
               kampf: {
                 ...aktuellerPvpKampf,
+
                 angreiferRudel:
-                  a?.rudel || "",
+                  aktuellerPvpKampf
+                    .angreiferRudel ||
+                  "",
+
                 verteidigerRudel:
-                  v?.rudel || "",
+                  aktuellerPvpKampf
+                    .verteidigerRudel ||
+                  "",
+
                 angreiferPokemon:
-                  a?.pokemon || "",
+                  aktuellerPvpKampf
+                    .angreiferPokemon ||
+                  "",
+
                 verteidigerPokemon:
-                  v?.pokemon || "",
+                  aktuellerPvpKampf
+                    .verteidigerPokemon ||
+                  "",
               },
             })
           );
 
           return;
         }
+
+
+        /*
+           PVP OVERLAY
+        */
 
         if (req.url === "/pvp") {
           res.writeHead(
@@ -1583,11 +1825,20 @@ const server =
 
           res.end(`<!DOCTYPE html>
 <html lang="de">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1.0"
+>
+
 <title>Fuchs PvP</title>
+
 <style>
+
 html,body{
   margin:0;
   padding:0;
@@ -1597,6 +1848,7 @@ html,body{
   background:transparent;
   font-family:Arial,sans-serif;
 }
+
 #app{
   width:100%;
   height:100%;
@@ -1604,6 +1856,7 @@ html,body{
   align-items:center;
   justify-content:center;
 }
+
 .card{
   min-width:700px;
   max-width:90vw;
@@ -1614,47 +1867,62 @@ html,body{
   text-align:center;
   box-shadow:0 0 30px rgba(0,0,0,.5);
 }
+
 .title{
   font-size:38px;
   font-weight:900;
   margin-bottom:25px;
 }
+
 .fighters{
   display:flex;
   align-items:center;
   justify-content:center;
   gap:30px;
 }
+
 .fighter{
   min-width:250px;
   padding:20px;
   border-radius:18px;
   background:rgba(255,255,255,.08);
 }
+
 .name{
   font-size:27px;
   font-weight:800;
 }
+
 .detail{
   margin-top:10px;
   font-size:22px;
 }
+
 .vs{
   font-size:40px;
   font-weight:900;
 }
+
 .winner{
   margin-top:25px;
   font-size:28px;
   font-weight:900;
 }
+
 </style>
+
 </head>
+
 <body>
+
 <div id="app"></div>
+
 <script>
+
 async function laden(){
+
   try{
+
     const response =
       await fetch("/pvp-data");
 
@@ -1664,8 +1932,13 @@ async function laden(){
     const app =
       document.getElementById("app");
 
-    if(!data || !data.kampf){
+    if(
+      !data ||
+      !data.kampf
+    ){
+
       app.innerHTML="";
+
       return;
     }
 
@@ -1682,39 +1955,62 @@ async function laden(){
 
     const detail1 =
       pokemon
-        ? (k.angreiferPokemon || "")
-        : (k.angreiferRudel || "");
+        ? (
+            k.angreiferPokemon ||
+            ""
+          )
+        : (
+            k.angreiferRudel ||
+            ""
+          );
 
     const detail2 =
       pokemon
-        ? (k.verteidigerPokemon || "")
-        : (k.verteidigerRudel || "");
+        ? (
+            k.verteidigerPokemon ||
+            ""
+          )
+        : (
+            k.verteidigerRudel ||
+            ""
+          );
 
     app.innerHTML =
       \`
       <div class="card">
-        <div class="title">\${title}</div>
+
+        <div class="title">
+          \${title}
+        </div>
 
         <div class="fighters">
 
           <div class="fighter">
+
             <div class="name">
               @\${k.angreifer}
             </div>
+
             <div class="detail">
               \${detail1}
             </div>
+
           </div>
 
-          <div class="vs">⚔️</div>
+          <div class="vs">
+            ⚔️
+          </div>
 
           <div class="fighter">
+
             <div class="name">
               @\${k.verteidiger}
             </div>
+
             <div class="detail">
               \${detail2}
             </div>
+
           </div>
 
         </div>
@@ -1722,22 +2018,42 @@ async function laden(){
         <div class="winner">
           🏆 @\${k.gewinner}
         </div>
+
       </div>
       \`;
+
   }
+
   catch(error){
-    console.error(error);
+
+    console.error(
+      error
+    );
+
   }
+
 }
 
 laden();
-setInterval(laden,1000);
+
+setInterval(
+  laden,
+  1000
+);
+
 </script>
+
 </body>
+
 </html>`);
 
           return;
         }
+
+
+        /*
+           404
+        */
 
         res.writeHead(
           404,
@@ -1747,15 +2063,24 @@ setInterval(laden,1000);
           }
         );
 
-        res.end("404");
+        res.end(
+          "404"
+        );
+
       } catch (error) {
+
         console.error(
           "❌ HTTP Fehler:",
           error.message
         );
 
-        res.writeHead(500);
-        res.end("500");
+        res.writeHead(
+          500
+        );
+
+        res.end(
+          "500"
+        );
       }
     }
   );
@@ -1769,10 +2094,13 @@ let ws = null;
 let wsReconnectTimer = null;
 
 function streamelementsVerbinden() {
+
   if (!STREAMELEMENTS_JWT) {
+
     console.error(
       "❌ STREAMELEMENTS_JWT fehlt."
     );
+
     return;
   }
 
@@ -1796,46 +2124,62 @@ function streamelementsVerbinden() {
   ws.on(
     "open",
     () => {
+
       console.log(
         "✅ StreamElements WebSocket verbunden."
       );
 
       try {
+
         ws.send(
           JSON.stringify({
+
             type:
               "subscribe",
+
             nonce:
               `fuchs-${Date.now()}-${Math.random()
                 .toString(36)
                 .slice(2)}`,
+
             data: {
+
               topic:
                 "channel.chat.message",
+
               token:
                 STREAMELEMENTS_JWT,
+
               token_type:
                 "jwt",
+
             },
+
           })
         );
 
         console.log(
           "📡 Chat-Topic wird abonniert."
         );
+
       } catch (error) {
+
         console.error(
           "❌ Subscribe:",
           error.message
         );
+
       }
+
     }
   );
 
   ws.on(
     "message",
     async raw => {
+
       try {
+
         const message =
           JSON.parse(
             raw.toString()
@@ -1851,28 +2195,35 @@ function streamelementsVerbinden() {
             "response" &&
           message.error
         ) {
+
           console.error(
             "❌ StreamElements Abo-Fehler:",
             message.error
           );
+
           return;
         }
 
         await chatVerarbeiten(
           message
         );
+
       } catch (error) {
+
         console.error(
           "❌ WebSocket Nachricht:",
           error.message
         );
+
       }
+
     }
   );
 
   ws.on(
     "close",
     () => {
+
       console.log(
         "🔌 StreamElements WebSocket geschlossen."
       );
@@ -1886,10 +2237,12 @@ function streamelementsVerbinden() {
       wsReconnectTimer =
         setTimeout(
           () => {
+
             wsReconnectTimer =
               null;
 
             streamelementsVerbinden();
+
           },
           5000
         );
@@ -1899,10 +2252,12 @@ function streamelementsVerbinden() {
   ws.on(
     "error",
     error => {
+
       console.error(
         "❌ StreamElements WebSocket:",
         error.message
       );
+
     }
   );
 }
@@ -1919,6 +2274,7 @@ const PORT =
 server.listen(
   PORT,
   async () => {
+
     console.log(
       `🚀 Fuchs-XP-Bot gestartet auf Port ${PORT}`
     );
@@ -1928,19 +2284,24 @@ server.listen(
     );
 
     try {
+
       await streamElementsChannelHolen();
 
       console.log(
         "📺 StreamElements Kanal:",
         streamElementsChannel
       );
+
     } catch (error) {
+
       console.error(
         "⚠️ StreamElements Kanal konnte nicht geladen werden:",
         error.message
       );
+
     }
 
     streamelementsVerbinden();
+
   }
 );
