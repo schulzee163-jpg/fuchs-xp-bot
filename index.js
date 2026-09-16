@@ -996,6 +996,10 @@ const offeneKaempfe =
 let aktuellerPvpKampf =
   null;
 
+/* Dieser Account nimmt PvP-Herausforderungen automatisch an. */
+const AUTO_ANNEHMER =
+  "fuchsmissvegetalover2_0";
+
 
 /* =====================================================
    RUDEL-PVP START
@@ -1073,11 +1077,27 @@ async function pvpStart(
 
   if (
     verteidiger ===
-    "fuchsmissvegetalover2_0"
+    AUTO_ANNEHMER
   ) {
-    return kampfAnnehmen(
-      verteidiger
+    const annahmeText =
+      `@${verteidiger} 🤝 Kampf automatisch angenommen!`;
+
+    await streamelementsSenden(
+      annahmeText
     );
+
+    const kampfText =
+      await kampfAnnehmen(
+        verteidiger
+      );
+
+    if (kampfText) {
+      await streamelementsSenden(
+        kampfText
+      );
+    }
+
+    return null;
   }
 
   return (
@@ -1190,11 +1210,27 @@ async function pokemonKampfStart(
 
   if (
     verteidiger ===
-    "fuchsmissvegetalover2_0"
+    AUTO_ANNEHMER
   ) {
-    return kampfAnnehmen(
-      verteidiger
+    const annahmeText =
+      `@${verteidiger} 🤝 Pokémon-Kampf automatisch angenommen!`;
+
+    await streamelementsSenden(
+      annahmeText
     );
+
+    const kampfText =
+      await kampfAnnehmen(
+        verteidiger
+      );
+
+    if (kampfText) {
+      await streamelementsSenden(
+        kampfText
+      );
+    }
+
+    return null;
   }
 
   return (
@@ -1400,8 +1436,8 @@ async function kampfAnnehmen(
         body: JSON.stringify({
           pvp_siege:
             Number(
-              a.spieler ===
-                gewinnerName
+              gewinnerName ===
+                angreiferName
                 ? a.pvp_siege || 0
                 : v.pvp_siege || 0
             ) + 1,
@@ -1418,8 +1454,8 @@ async function kampfAnnehmen(
         body: JSON.stringify({
           pvp_niederlagen:
             Number(
-              a.spieler ===
-                verliererName
+              verliererName ===
+                angreiferName
                 ? a.pvp_niederlagen || 0
                 : v.pvp_niederlagen || 0
             ) + 1,
