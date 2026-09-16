@@ -580,7 +580,6 @@ const server=http.createServer(
    res.writeHead(500,{"Content-Type":"text/plain; charset=utf-8"});
    res.end("Interner Serverfehler");
   }
- );
 server.listen(PORT,()=>{
  console.log(`🦊 Fuchs-XP-Bot gestartet auf Port ${PORT}`);
  console.log("PvP-Overlay: /pvp");
