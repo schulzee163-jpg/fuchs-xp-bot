@@ -191,13 +191,4 @@ setInterval(
 </html>`);return;}res.writeHead(404,{"Content-Type":"text/plain; charset=utf-8",});res.end("404");}catch(error){console.error("❌ HTTP Fehler:",error.message);res.writeHead(500);res.end("500");}});let ws=null;let wsReconnectTimer=null;function streamelementsVerbinden(){if(!STREAMELEMENTS_JWT){console.error("❌ STREAMELEMENTS_JWT fehlt.");return;}if(ws&&ws.readyState===WebSocket.OPEN){return;}console.log("🔌 Verbinde StreamElements WebSocket...");ws=new WebSocket("wss://astro.streamelements.com/");ws.on("open",()=>{console.log("✅ StreamElements WebSocket verbunden.");try{ws.send(JSON.stringify({type:"subscribe",nonce:`fuchs-${Date.now()}-${Math.random()
                 .toString(36)
                 .slice(2)}`,data:{topic:"channel.chat.message",token:STREAMELEMENTS_JWT,token_type:"jwt",},}));console.log("📡 Chat-Topic wird abonniert.");}catch(error){console.error("❌ Subscribe:",error.message);}});ws.on("message",async raw=>{try{const message=JSON.parse(raw.toString());console.log("📩 SE:",JSON.stringify(message));if(message.type==="response"&&message.error){console.error("❌ StreamElements Abo-Fehler:",message.error);return;}await chatVerarbeiten(message);}catch(error){console.error("❌ WebSocket Nachricht:",error.message);}});ws.on("close",()=>{console.log("🔌 StreamElements WebSocket geschlossen.");if(wsReconnectTimer){return;}wsReconnectTimer=setTimeout(()=>{wsReconnectTimer=null;streamelementsVerbinden();},5000);});ws.on("error",error=>{console.error("❌ StreamElements WebSocket:",error.message);});}const PORT=process.env.PORT||10000;server.listen(PORT,async()=>{console.log(`🚀 Fuchs-XP-Bot gestartet auf Port ${PORT}`);console.log(`🌐 PvP-Overlay: /pvp`);try{await streamElementsChannelHolen();console.log("📺 StreamElements Kanal:",streamElementsChannel);}catch(error){console.error("⚠️ StreamElements Kanal konnte nicht geladen werden:",error.message);}streamelementsVerbinden();});```
-
-**Ganz wichtig ❤️:** Das ist wirklich der komplette Ersatz für deine `index.js`. Die drei Teile müssen **genau in dieser Reihenfolge** zusammen in dieselbe Datei.
-
-Danach in GitHub **Commit changes** → Render baut automatisch neu.
-
-Und dann testen wir **zuerst nur**:
-
-`!quest`
-
-Wenn das funktioniert, testen wir danach `!pvp` und `!pokekampf`. 🦊❤️
+            
