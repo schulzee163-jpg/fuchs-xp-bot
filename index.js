@@ -1258,15 +1258,14 @@ async function kampfAnnehmen(
       error.message
     );
   }
-
-  if (
-    kampf.typ ===
-    "pokemon"
-  ) {
-    return (
-      `⚡ POKÉMON-KAMPF! @${a.spieler} ${a.pokemon} ⚔️ @${v.spieler} ${v.pokemon} → 🏆 @${gewinner.spieler} gewinnt +100 XP!`
-    );
-  }
+if (
+  kampf.typ ===
+  "pokemon"
+) {
+  return (
+    `⚡ POKÉMON-KAMPF! @${a.spieler} ${kampf.angreiferPokemon} ⚔️ @${v.spieler} ${kampf.verteidigerPokemon} → 🏆`
+  );
+}
 
   return (
     `⚔️ RUDEL-KAMPF! @${a.spieler} [${a.rudel}] ⚔️ @${v.spieler} [${v.rudel}] → 🏆 @${gewinner.spieler} gewinnt +100 XP!`
