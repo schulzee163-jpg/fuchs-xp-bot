@@ -2994,24 +2994,30 @@ function rudelWahl(
 
 function hilfe() {
 
-  return (
-    `🦊 MitsusundWandasWelt: ` +
+  return [
+    `🦊 MitsusundWandasWelt – HILFE 1/4: ` +
     `!profil !xp !quest !antwort ` +
     `!dorf !bau !fuchsname !bauname ` +
-    `!markt !kaufen !inventar !inv !bank ` +
+    `!markt !kaufen !inventar !inv !bank`,
+
+    `🦊 HILFE 2/4: ` +
     `!schenken !post !tausch ` +
     `!begleiter !begleiterinfo !begleiterwahl ` +
     `!begleiterfüttern !begleiterabenteuer ` +
-    `!begleiterfähigkeit !abenteuer !karte ` +
+    `!begleiterfähigkeit !abenteuer !karte`,
+
+    `🦊 HILFE 3/4: ` +
     `!entdeckungen !wesen !geheimnis !fuchsstatur ` +
     `!wetter !tor !erfolge !chronik !archiv ` +
     `!schicksal !rudel !rudelwahl !pokemon ` +
-    `!pokekampf !pvp !annehmen ` +
+    `!pokekampf !pvp !annehmen`,
+
+    `🦊 HILFE 4/4: ` +
     `!team !teamgründen !teameinladen ` +
     `!teambeitreten !teamverlassen !teamaufgaben ` +
     `!event !eventmitmachen !eventstatus ` +
     `!ruhmeshalle !legenden !fuchskern`
-  );
+  ];
 }
 
 
@@ -4055,6 +4061,21 @@ async function chatVerarbeiten(
 
 
     if (
+      Array.isArray(antwort)
+    ) {
+
+      for (
+        const nachricht of antwort
+      ) {
+
+        await streamelementsSenden(
+          nachricht
+        );
+
+      }
+
+    }
+    else if (
       antwort
     ) {
 
@@ -4690,4 +4711,3 @@ server.listen(
 
   }
 );
-
