@@ -1463,11 +1463,8 @@ function inventar(
   const w =
     spieler(username);
 
-  if (
-    !w.inventar ||
-    typeof w.inventar !== "object" ||
-    Array.isArray(w.inventar)
-  ) {
+  // 🛠️ Sicherheit: ältere Spielerobjekte können noch kein Inventar besitzen.
+  if (!w.inventar || typeof w.inventar !== "object") {
     w.inventar = {};
   }
 
@@ -2962,7 +2959,7 @@ function hilfe() {
     `🦊 MitsusundWandasWelt: ` +
     `!profil !xp !quest !antwort ` +
     `!dorf !bau !fuchsname !bauname ` +
-    `!markt !kaufen !inventar !bank ` +
+    `!markt !kaufen !inventar !inv !bank ` +
     `!schenken !post !tausch ` +
     `!begleiter !begleiterinfo !begleiterwahl ` +
     `!begleiterfüttern !begleiterabenteuer ` +
@@ -3049,7 +3046,14 @@ async function chatVerarbeiten(
   const w =
     spieler(username);
 
-  w.messageCount++;
+  questTagPruefen(w);
+
+  const istBefehl =
+    text.trim().startsWith("!");
+
+  if (!istBefehl) {
+    w.messageCount++;
+  }
 
   try {
 
@@ -3238,7 +3242,7 @@ async function chatVerarbeiten(
     }
 
 
-    /* !INVENTAR */
+    /* !INVENTAR / !INV */
 
     else if (
       /^(?:!inventar|!inv)$/i.test(
@@ -4014,7 +4018,34 @@ async function chatVerarbeiten(
 
     else {
 
-      return;
+      // Normale Chatnachrichten werden nicht als Befehl behandelt.
+      // Wenn gerade eine kreative Tagesquest aktiv ist, gilt die
+      // Nachricht direkt als Antwort auf diese Quest.
+      // Nachrichtenquests ("Schreibe X Nachrichten") werden dagegen
+      // nur über den Nachrichten-Zähler erfüllt.
+      const aktuelleQuest =
+        questHeute()[w.questIndex];
+
+      const istNachrichtenQuest =
+        aktuelleQuest &&
+        /^📝?\s*Schreibe\s+\d+\s+Nachrichten\s+im\s+Chat/i.test(
+          aktuelleQuest[0]
+        );
+
+      if (
+        !istBefehl &&
+        aktuelleQuest &&
+        !istNachrichtenQuest
+      ) {
+
+        antwort =
+          await questAntwort(
+            username,
+            text.trim()
+          );
+      } else {
+        return;
+      }
     }
 
 
@@ -4364,8 +4395,65 @@ let reconnectToken =
 let reconnectTimer =
   null;
 
-let websocketHeartbeatTimer =
+let heartbeatTimer =
   null;
+
+let heartbeatTimeout =
+  null;
+
+function heartbeatStarten() {
+
+  clearInterval(heartbeatTimer);
+  clearTimeout(heartbeatTimeout);
+
+  heartbeatTimer =
+    setInterval(() => {
+
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        return;
+      }
+
+      let pongErhalten = false;
+
+      const pongHandler = () => {
+        pongErhalten = true;
+      };
+
+      ws.once("pong", pongHandler);
+
+      try {
+        ws.ping();
+      } catch (error) {
+        console.error("❌ StreamElements Ping-Fehler:", error.message);
+        try {
+          ws.terminate();
+        } catch {}
+        return;
+      }
+
+      clearTimeout(heartbeatTimeout);
+
+      heartbeatTimeout =
+        setTimeout(() => {
+
+          if (!pongErhalten && ws && ws.readyState === WebSocket.OPEN) {
+            console.log("⚠️ StreamElements antwortet nicht – Verbindung wird automatisch neu aufgebaut.");
+            try {
+              ws.terminate();
+            } catch {}
+          }
+
+        }, 10000);
+
+    }, 20000);
+}
+
+function heartbeatStoppen() {
+  clearInterval(heartbeatTimer);
+  clearTimeout(heartbeatTimeout);
+  heartbeatTimer = null;
+  heartbeatTimeout = null;
+}
 
 function streamelementsVerbinden() {
 
@@ -4409,37 +4497,6 @@ function streamelementsVerbinden() {
       url
     );
 
-  clearInterval(
-    websocketHeartbeatTimer
-  );
-
-  websocketHeartbeatTimer =
-    setInterval(
-      () => {
-        if (
-          !ws ||
-          ws.readyState !==
-          WebSocket.OPEN
-        ) {
-          return;
-        }
-
-        try {
-          ws.ping();
-        } catch (error) {
-          console.error(
-            "❌ StreamElements WebSocket Ping:",
-            error.message
-          );
-
-          try {
-            ws.terminate();
-          } catch {}
-        }
-      },
-      30000
-    );
-
   ws.on(
     "open",
     () => {
@@ -4447,6 +4504,8 @@ function streamelementsVerbinden() {
       console.log(
         "✅ StreamElements WebSocket verbunden."
       );
+
+      heartbeatStarten();
 
     }
   );
@@ -4533,12 +4592,7 @@ function streamelementsVerbinden() {
     "close",
     () => {
 
-      clearInterval(
-        websocketHeartbeatTimer
-      );
-
-      websocketHeartbeatTimer =
-        null;
+      heartbeatStoppen();
 
       console.log(
         "🔁 StreamElements getrennt – neuer Versuch in 5 Sekunden."
@@ -4550,14 +4604,7 @@ function streamelementsVerbinden() {
 
       reconnectTimer =
         setTimeout(
-          () => {
-
-            reconnectTimer =
-              null;
-
-            streamelementsVerbinden();
-
-          },
+          streamelementsVerbinden,
           5000
         );
     }
