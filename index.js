@@ -1463,6 +1463,14 @@ function inventar(
   const w =
     spieler(username);
 
+  if (
+    !w.inventar ||
+    typeof w.inventar !== "object" ||
+    Array.isArray(w.inventar)
+  ) {
+    w.inventar = {};
+  }
+
   const items =
     Object.entries(
       w.inventar
@@ -3233,7 +3241,7 @@ async function chatVerarbeiten(
     /* !INVENTAR */
 
     else if (
-      /^!inventar$/i.test(
+      /^(?:!inventar|!inv)$/i.test(
         text.trim()
       )
     ) {
@@ -4356,6 +4364,9 @@ let reconnectToken =
 let reconnectTimer =
   null;
 
+let websocketHeartbeatTimer =
+  null;
+
 function streamelementsVerbinden() {
 
   if (
@@ -4396,6 +4407,37 @@ function streamelementsVerbinden() {
   ws =
     new WebSocket(
       url
+    );
+
+  clearInterval(
+    websocketHeartbeatTimer
+  );
+
+  websocketHeartbeatTimer =
+    setInterval(
+      () => {
+        if (
+          !ws ||
+          ws.readyState !==
+          WebSocket.OPEN
+        ) {
+          return;
+        }
+
+        try {
+          ws.ping();
+        } catch (error) {
+          console.error(
+            "❌ StreamElements WebSocket Ping:",
+            error.message
+          );
+
+          try {
+            ws.terminate();
+          } catch {}
+        }
+      },
+      30000
     );
 
   ws.on(
@@ -4491,6 +4533,13 @@ function streamelementsVerbinden() {
     "close",
     () => {
 
+      clearInterval(
+        websocketHeartbeatTimer
+      );
+
+      websocketHeartbeatTimer =
+        null;
+
       console.log(
         "🔁 StreamElements getrennt – neuer Versuch in 5 Sekunden."
       );
@@ -4501,7 +4550,14 @@ function streamelementsVerbinden() {
 
       reconnectTimer =
         setTimeout(
-          streamelementsVerbinden,
+          () => {
+
+            reconnectTimer =
+              null;
+
+            streamelementsVerbinden();
+
+          },
           5000
         );
     }
