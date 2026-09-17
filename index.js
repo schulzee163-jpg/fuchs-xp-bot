@@ -8663,52 +8663,6 @@ function postVorbereiten(profil) {
   return profil.post;
 }
 
-
-function postSenden(
-  sender,
-  empfaenger,
-  nachricht
-) {
-  if (!nachricht || !nachricht.trim()) {
-    return {
-      ok: false,
-      text: "❌ Die Nachricht darf nicht leer sein."
-    };
-  }
-
-  const ziel =
-    fuchsProfile.get(
-      normalisieren(empfaenger)
-    );
-
-  if (!ziel) {
-    return {
-      ok: false,
-      text: "❌ Dieser Fuchs wurde noch nicht gefunden."
-    };
-  }
-
-  postVorbereiten(ziel);
-
-  ziel.post.push({
-    von: sender.spieler,
-    nachricht: nachricht.trim().slice(0, 300),
-    zeit: new Date().toISOString(),
-    gelesen: false
-  });
-
-  if (ziel.post.length > 50) {
-    ziel.post.shift();
-  }
-
-  return {
-    ok: true,
-    text:
-      `📬 Nachricht an ${fuchsAnzeigeName(ziel)} gesendet!`
-  };
-}
-
-
 // ============================================================
 // POSTEINGANG
 // ============================================================
