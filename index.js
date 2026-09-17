@@ -4510,6 +4510,9 @@ function streamelementsVerbinden() {
         "✅ StreamElements WebSocket verbunden."
       );
 
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+
       heartbeatStarten();
 
     }
@@ -4623,6 +4626,26 @@ function streamelementsVerbinden() {
         "❌ StreamElements WebSocket:",
         error.message
       );
+
+      // 🛡️ Bei einem echten Socket-Fehler die Verbindung aktiv beenden.
+      // Das löst zuverlässig das vorhandene "close" aus, das nach 5 Sekunden
+      // automatisch eine neue StreamElements-Verbindung aufbaut.
+      try {
+        if (
+          ws &&
+          (
+            ws.readyState === WebSocket.OPEN ||
+            ws.readyState === WebSocket.CONNECTING
+          )
+        ) {
+          ws.terminate();
+        }
+      } catch (closeError) {
+        console.error(
+          "❌ StreamElements Verbindung schließen:",
+          closeError.message
+        );
+      }
 
     }
   );
