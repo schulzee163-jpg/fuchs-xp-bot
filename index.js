@@ -2994,24 +2994,29 @@ function rudelWahl(
 
 function hilfe() {
 
-  return (
-    `🦊 MitsusundWandasWelt: ` +
+  return [
+    `🦊 HILFE 1/4 – PROFIL & FUCHSDORF: ` +
     `!profil !xp !quest !antwort ` +
-    `!dorf !bau !fuchsname !bauname ` +
+    `!dorf !bau !fuchsname !bauname`,
+
+    `🦊 HILFE 2/4 – MARKT & BEGLEITER: ` +
     `!markt !kaufen !inventar !inv !bank ` +
     `!schenken !post !tausch ` +
     `!begleiter !begleiterinfo !begleiterwahl ` +
-    `!begleiterfüttern !begleiterabenteuer ` +
-    `!begleiterfähigkeit !abenteuer !karte ` +
-    `!entdeckungen !wesen !geheimnis !fuchsstatur ` +
-    `!wetter !tor !erfolge !chronik !archiv ` +
-    `!schicksal !rudel !rudelwahl !pokemon ` +
-    `!pokekampf !pvp !annehmen ` +
-    `!team !teamgründen !teameinladen ` +
-    `!teambeitreten !teamverlassen !teamaufgaben ` +
-    `!event !eventmitmachen !eventstatus ` +
-    `!ruhmeshalle !legenden !fuchskern`
-  );
+    `!begleiterfüttern !begleiterabenteuer !begleiterfähigkeit`,
+
+    `🦊 HILFE 3/4 – ABENTEUER & WELT: ` +
+    `!abenteuer !karte !entdeckungen !wesen ` +
+    `!geheimnis !fuchsstatur !wetter !tor ` +
+    `!erfolge !chronik !archiv !schicksal !rudel !rudelwahl`,
+
+    `🦊 HILFE 4/4 – KÄMPFE & GEMEINSCHAFT: ` +
+    `!pokemon !pokekampf !pvp !annehmen ` +
+    `!angriff !verteidigen !spezial !begleiterkampf ` +
+    `!team !teamgründen !teameinladen !teambeitreten ` +
+    `!teamverlassen !teamaufgaben !event !eventmitmachen ` +
+    `!eventstatus !ruhmeshalle !legenden !fuchskern`
+  ];
 }
 
 
@@ -3165,8 +3170,16 @@ async function chatVerarbeiten(
       )
     ) {
 
-      antwort =
+      const hilfen =
         hilfe();
+
+      for (const hilfeTeil of hilfen) {
+        await streamelementsSenden(
+          hilfeTeil
+        );
+      }
+
+      return;
     }
 
 
