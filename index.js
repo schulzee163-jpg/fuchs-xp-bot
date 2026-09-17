@@ -8667,36 +8667,6 @@ function postVorbereiten(profil) {
 // POSTEINGANG
 // ============================================================
 
-function postAnzeigen(profil) {
-  const liste =
-    postVorbereiten(profil);
-
-  if (!liste.length) {
-    return (
-      "📬 FUCHS-POST\n" +
-      "Dein Briefkasten ist leer."
-    );
-  }
-
-  const letzte =
-    liste.slice(-10);
-
-  for (const eintrag of letzte) {
-    eintrag.gelesen = true;
-  }
-
-  return (
-    "📬 FUCHS-POST\n" +
-    letzte
-      .map(
-        x =>
-          `✉️ ${x.von}: ${x.nachricht}`
-      )
-      .join("\n")
-  );
-}
-
-
 // ============================================================
 // UNGELESENE POST
 // ============================================================
