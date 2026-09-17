@@ -1738,24 +1738,41 @@ function begleiterAnzeigen(
   const w =
     spieler(username);
 
-  if (
-    !w.begleiter.length
-  ) {
+  if (!Array.isArray(w.begleiter)) {
+    w.begleiter = [];
+  }
+
+  if (!Array.isArray(w.aktiveBegleiter)) {
+    w.aktiveBegleiter = [];
+  }
+
+  console.log(
+    `🐾 Begleiter-Befehl für ${username}: ${w.begleiter.length} Begleiter`
+  );
+
+  if (!w.begleiter.length) {
 
     return (
-      `🐾 @${username} Du hast noch keinen ` +
-      `Begleiter. Starte ein Abenteuer mit !begleiterabenteuer.`
+      `🐾 @${username} Du hast noch keinen Begleiter. ` +
+      `Nutze !begleiterabenteuer, um deinen ersten Begleiter zu finden.`
     );
   }
 
+  const aktive =
+    w.aktiveBegleiter.length
+      ? ` | Aktiv: ${w.aktiveBegleiter.join(", ")}`
+      : ` | Noch kein Begleiter aktiv`;
+
   return (
-    `🐾 @${username} Begleiter: ` +
+    `🐾 @${username} Deine Begleiter: ` +
     w.begleiter
       .map(
         b =>
           `${b.name} (${b.rarity}, ${b.level}, ${b.persoenlichkeit})`
       )
-      .join(" | ")
+      .join(" | ") +
+    aktive +
+    ` | Auswahl: !begleiterwahl [Name]`
   );
 }
 
@@ -1797,17 +1814,46 @@ function begleiterWahl(
   const w =
     spieler(username);
 
+  if (!Array.isArray(w.begleiter)) {
+    w.begleiter = [];
+  }
+
+  if (!Array.isArray(w.aktiveBegleiter)) {
+    w.aktiveBegleiter = [];
+  }
+
+  console.log(
+    `🐾 Begleiterwahl für ${username}: ${name || "keine Auswahl"}`
+  );
+
+  if (!name || !name.trim()) {
+
+    if (!w.begleiter.length) {
+      return (
+        `🐾 @${username} Du hast noch keinen Begleiter. ` +
+        `Nutze zuerst !begleiterabenteuer.`
+      );
+    }
+
+    return (
+      `🐾 @${username} Wähle einen Begleiter: ` +
+      w.begleiter.map(b => b.name).join(", ") +
+      `. Beispiel: !begleiterwahl ${w.begleiter[0].name}`
+    );
+  }
+
   const b =
     w.begleiter.find(
       x =>
         normalisieren(x.name) ===
-        normalisieren(name)
+        normalisieren(name.trim())
     );
 
   if (!b) {
 
     return (
-      `🐾 @${username} Begleiter nicht gefunden.`
+      `🐾 @${username} Begleiter nicht gefunden. ` +
+      `Deine Auswahl: ${w.begleiter.map(x => x.name).join(", ") || "noch keiner"}.`
     );
   }
 
@@ -1829,19 +1875,12 @@ function begleiterWahl(
     );
   }
 
-  if (
-    !w.aktiveBegleiter.includes(
-      b.name
-    )
-  ) {
-
-    w.aktiveBegleiter.push(
-      b.name
-    );
+  if (!w.aktiveBegleiter.includes(b.name)) {
+    w.aktiveBegleiter.push(b.name);
   }
 
   return (
-    `🐾 @${username} ${b.name} ist jetzt aktiv.`
+    `🐾 @${username} ${b.name} ist jetzt aktiv! 🐾`
   );
 }
 
@@ -3046,14 +3085,7 @@ async function chatVerarbeiten(
   const w =
     spieler(username);
 
-  questTagPruefen(w);
-
-  const istBefehl =
-    text.trim().startsWith("!");
-
-  if (!istBefehl) {
-    w.messageCount++;
-  }
+  w.messageCount++;
 
   try {
 
@@ -3373,18 +3405,18 @@ async function chatVerarbeiten(
     /* !BEGLEITERWAHL */
 
     else if (
-      /^!begleiterwahl\s+(.+)$/i.test(text)
+      /^!begleiterwahl(?:\s+(.+))?$/i.test(text.trim())
     ) {
 
       match =
         text.match(
-          /^!begleiterwahl\s+(.+)$/i
+          /^!begleiterwahl(?:\s+(.+))?$/i
         );
 
       antwort =
         begleiterWahl(
           username,
-          match[1]
+          match?.[1] || ""
         );
     }
 
@@ -4018,34 +4050,7 @@ async function chatVerarbeiten(
 
     else {
 
-      // Normale Chatnachrichten werden nicht als Befehl behandelt.
-      // Wenn gerade eine kreative Tagesquest aktiv ist, gilt die
-      // Nachricht direkt als Antwort auf diese Quest.
-      // Nachrichtenquests ("Schreibe X Nachrichten") werden dagegen
-      // nur über den Nachrichten-Zähler erfüllt.
-      const aktuelleQuest =
-        questHeute()[w.questIndex];
-
-      const istNachrichtenQuest =
-        aktuelleQuest &&
-        /^📝?\s*Schreibe\s+\d+\s+Nachrichten\s+im\s+Chat/i.test(
-          aktuelleQuest[0]
-        );
-
-      if (
-        !istBefehl &&
-        aktuelleQuest &&
-        !istNachrichtenQuest
-      ) {
-
-        antwort =
-          await questAntwort(
-            username,
-            text.trim()
-          );
-      } else {
-        return;
-      }
+      return;
     }
 
 
