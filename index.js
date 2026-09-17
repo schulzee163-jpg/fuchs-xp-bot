@@ -1,10 +1,16 @@
 import http from "http";
 import WebSocket from "ws";
 
+/* =========================================================
+   🌍 MITSUSUNDWANDASWELT
+   🦊 FUCHSWELT BOT
+   Twitch + StreamElements + Supabase + Render
+========================================================= */
 
-/* =====================================================
-   KONFIGURATION
-===================================================== */
+
+/* =========================================================
+   ⚙️ KONFIGURATION
+========================================================= */
 
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
@@ -17,19 +23,19 @@ const STREAMELEMENTS_JWT =
   process.env.STREAMELEMENTS_JWT || "";
 
 const PORT =
-  process.env.PORT || 10000;
+  Number(process.env.PORT || 10000);
 
 let streamElementsChannel =
   process.env.STREAMELEMENTS_CHANNEL || null;
 
 
-/* =====================================================
-   POKÉMON
-===================================================== */
+/* =========================================================
+   🦊 POKÉMON
+========================================================= */
 
 const eigenePokemon = {
   fuchsmissvegetalover2_0: "Pikachu",
-  vegetalover2_0: "Glumanda",
+  vegetalover2_0: "Glumanda"
 };
 
 const pokemonListe = [
@@ -52,96 +58,387 @@ const pokemonListe = [
   "Gengar",
   "Absol",
   "Raupy",
-  "Sterndu",
+  "Sterndu"
 ];
 
 
-/* =====================================================
-   RUDEL
-===================================================== */
+/* =========================================================
+   🐾 RUDEL
+========================================================= */
 
-const rudelMap = {
+const rudel = {
   feuer: "🔥 Feuerrudel",
   wasser: "🌊 Wasserrudel",
   wald: "🌲 Waldrudel",
-  ice: "🧊 ICErudel",
+  ice: "🧊 ICErudel"
+};
+
+const gebiete = {
+  feuer: "🌋 Feuertal",
+  wasser: "🌊 Wasserlande",
+  wald: "🌲 Fuchswald",
+  ice: "❄️ Eisberge"
 };
 
 
-/* =====================================================
-   PVP
-===================================================== */
+/* =========================================================
+   👹 WESEN
+========================================================= */
 
-const offeneKaempfe = new Map();
-
-let aktuellerPvpKampf = null;
-
-
-/* =====================================================
-   WEBSOCKET
-===================================================== */
-
-let ws = null;
-
-let wsReconnectTimer = null;
-
-let wsReconnectToken = null;
+const wesen = [
+  "🌑 Schattenfuchs",
+  "🔥 Flammenwolf",
+  "❄️ Eisdrache",
+  "🌊 Wassergeist",
+  "🌲 Waldhüter"
+];
 
 
-/* =====================================================
-   HILFSFUNKTIONEN
-===================================================== */
+/* =========================================================
+   🏠 FUCHSBAU
+========================================================= */
+
+const fuchsbauStufen = [
+  "🏠 Kleiner Bau",
+  "🏡 Fuchshaus",
+  "🏰 Großer Fuchsbau",
+  "✨ Fuchsanwesen",
+  "👑 Fuchsresidenz"
+];
+
+const raeume = [
+  "Schlafhöhle",
+  "Schatzkammer",
+  "Begleiterzimmer",
+  "Trainingsraum",
+  "Dekorationsraum",
+  "Geheimraum"
+];
+
+
+/* =========================================================
+   🏅 TITEL
+========================================================= */
+
+const titel = [
+  "Jungfuchs",
+  "Abenteurer",
+  "Chronist",
+  "Duellfuchs",
+  "Rudelheld",
+  "Wesenbezwinger",
+  "Begleitermeister",
+  "Spurensucher",
+  "Kampflegende",
+  "Dorffuchs"
+];
+
+
+/* =========================================================
+   🏆 ERFOLGE
+========================================================= */
+
+const erfolge = [
+  "Jungfuchs gestartet",
+  "Erste Quest",
+  "Erstes Abenteuer",
+  "Mein erstes Zuhause",
+  "Einrichtungskünstler",
+  "Großer Bau",
+  "Erster Gefährte",
+  "Treuer Freund",
+  "Begleiter-Sammler",
+  "Münzsammler 1000",
+  "Großer Schatz 5000",
+  "Fuchsvermögen 10000",
+  "Spurensucher",
+  "Chronist",
+  "Geschichte geschrieben",
+  "Teamfuchs",
+  "Fuchsfreund",
+  "Dorffuchs"
+];
+
+
+/* =========================================================
+   🌟 SCHICKSAL
+========================================================= */
+
+const schicksal = [
+  "⚔️ Kriegerweg",
+  "🗺️ Entdeckerweg",
+  "💎 Sammlerweg",
+  "🤝 Freundesweg",
+  "🔐 Geheimnisweg"
+];
+
+
+/* =========================================================
+   🌟 URFUCHS-GESCHICHTE
+========================================================= */
+
+const story = [
+  "🌟 Der Urfuchs entdeckte einst Feuer, Wasser, Natur und Eis.",
+  "🌟 Aus diesen Kräften entstanden die vier Rudel.",
+  "🌟 Der Urfuchs verschwand, weil er wusste, dass eine neue Generation kommen würde.",
+  "🔥 Flammenherz-Essenz – Mut und Stärke.",
+  "🌊 Tiefenquell – Einheit und Weisheit.",
+  "🌲 Lebenskern – Leben und Erneuerung.",
+  "🧊 Eiskristall – Ruhe und Ausdauer.",
+  "🌙 Das fünfte Fragment: Wenn die vier Kräfte erwachen, wird das fünfte Fragment seinen Fuchs finden.",
+  "🌌 Das Verborgene Tal.",
+  "🗿 Die Fuchsstatur: Ihr seid gekommen … so, wie der Urfuchs es vorausgesehen hat.",
+  "⚫ Ein schwarzes Zeichen mit einem geteilten Kreis und Fuchssymbol.",
+  "🌳 Der alte Baum im Fuchswald trägt die Worte: Er erwacht.",
+  "🌲 Der Waldhüter: Es ist noch nicht zu spät … aber ihr müsst ihn finden.",
+  "🌊 In den Wasserlanden liegt eine Insel mit einer leuchtenden Quelle.",
+  "🚪 Die Spur endet an einer verschlossenen Unterwassertür."
+];
+
+
+/* =========================================================
+   🏪 FUCHS-MARKT
+========================================================= */
+
+const markt = [
+  ["Kuschelbett",150,"den"],
+  ["Fuchslaterne",100,"den"],
+  ["Kleine Zimmerpflanze",75,"den"],
+  ["Fuchsbild",125,"den"],
+  ["Schöne Vorratskiste",200,"den"],
+  ["Holzregal",175,"den"],
+  ["Fuchs-Kuscheltier",250,"den"],
+  ["Leuchtkristall",400,"den"],
+  ["Trophäenständer",350,"den"],
+  ["Geheimnisvolle Wanddeko",500,"den"],
+
+  ["Begleiter-Spielzeug",100,"begleiter"],
+  ["Lieblings-Leckerli",75,"begleiter"],
+  ["Kuscheldecke",125,"begleiter"],
+  ["Begleiter-Schleife",150,"begleiter"],
+  ["Kleines Begleiter-Bett",200,"begleiter"],
+  ["Glücksanhänger",250,"begleiter"],
+  ["Leuchtendes Halsband",350,"begleiter"],
+  ["Begleiter-Kristall",400,"begleiter"],
+  ["Seltenes Begleiter-Spielzeug",500,"begleiter"],
+  ["Legendäres Begleiter-Zubehör",750,"begleiter"],
+
+  ["Energie-Trank",100,"abenteuer"],
+  ["Kleiner Heiltrank",125,"abenteuer"],
+  ["Alte Schatzkarte",200,"abenteuer"],
+  ["Fuchslaterne",150,"abenteuer"],
+  ["Altes Fuchs-Kompass",250,"abenteuer"],
+  ["Spurensucher-Lupe",200,"abenteuer"],
+  ["Abenteuer-Rucksack",300,"abenteuer"],
+  ["Glückblatt",350,"abenteuer"],
+  ["Mysteriöser Schlüssel",500,"abenteuer"],
+  ["Uraltes Fuchs-Artefakt",750,"abenteuer"],
+
+  ["Kleine Fuchsbox",150,"box"],
+  ["Große Fuchsbox",300,"box"],
+  ["Glücksbox",500,"box"],
+  ["Geheimnisbox",750,"box"],
+  ["Urfuchs-Truhe",1000,"box"],
+
+  ["Fuchsmütze",150,"custom"],
+  ["Fuchsschleife",150,"custom"],
+  ["Coole Fuchsbrille",200,"custom"],
+  ["Fuchsschal",250,"custom"],
+  ["Fuchskrone",500,"custom"],
+  ["Leuchteffekt",400,"custom"],
+  ["Feuer-Aura",600,"custom"],
+  ["Eis-Aura",600,"custom"],
+  ["Wald-Aura",600,"custom"],
+  ["Wasser-Aura",600,"custom"],
+
+  ["Urfuchs-Splitter",1500,"rare"],
+  ["Kristall der fünf Kräfte",2000,"rare"],
+  ["Schattenfuchs-Amulett",1750,"rare"],
+  ["Flammenherz-Siegel",1500,"rare"],
+  ["Tiefenquell-Siegel",1500,"rare"],
+  ["Lebenskern-Siegel",1500,"rare"],
+  ["Eiskristall-Siegel",1500,"rare"],
+  ["Schlüssel des Geheimarchivs",2500,"rare"],
+  ["Urfuchs-Krone",5000,"rare"]
+];
+
+
+/* =========================================================
+   🐾 BEGLEITER
+========================================================= */
+
+const begleiterNamen = [
+  "Funkelpfote",
+  "Mondschweif",
+  "Keks",
+  "Flitz",
+  "Momo",
+  "Schattenpfote",
+  "Glitzer",
+  "Waldnase"
+];
+
+const begleiterPersoenlichkeiten = [
+  "Frech",
+  "Faul",
+  "Mutig",
+  "Neugierig",
+  "Treu",
+  "Geheimnisvoll"
+];
+
+const begleiterRaritaeten = [
+  "Gewöhnlich",
+  "Ungewöhnlich",
+  "Selten",
+  "Episch",
+  "Legendär",
+  "Mythisch"
+];
+
+
+/* =========================================================
+   🧰 HILFSFUNKTIONEN
+========================================================= */
 
 function normalisieren(username) {
-
   return String(username || "")
     .trim()
     .toLowerCase();
 }
 
-
 function zufall(min, max) {
-
   return Math.floor(
-    Math.random() *
-    (max - min + 1)
+    Math.random() * (max - min + 1)
   ) + min;
 }
 
+function levelAusXP(xp) {
+  return Math.floor(
+    Number(xp || 0) / 100
+  ) + 1;
+}
 
-function dbHeaders(extra = {}) {
+function berlinDatum() {
+  return new Intl.DateTimeFormat(
+    "en-CA",
+    {
+      timeZone: "Europe/Berlin",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }
+  ).format(new Date());
+}
 
-  return {
+function berlinStunde() {
+  return Number(
+    new Intl.DateTimeFormat(
+      "de-DE",
+      {
+        timeZone: "Europe/Berlin",
+        hour: "2-digit",
+        hour12: false
+      }
+    ).format(new Date())
+  );
+}
 
-    apikey:
-      SUPABASE_SERVICE_ROLE_KEY,
+function tageszeit() {
+  const h = berlinStunde();
 
-    Authorization:
-      `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+  if (h < 6) return "🌙 Nacht";
+  if (h < 11) return "🌅 Morgen";
+  if (h < 18) return "☀️ Tag";
+  if (h < 22) return "🌇 Abend";
 
-    "Content-Type":
-      "application/json",
+  return "🌙 Nacht";
+}
 
-    ...extra,
-  };
+function jahreszeit() {
+  const monat = Number(
+    new Intl.DateTimeFormat(
+      "en-US",
+      {
+        timeZone: "Europe/Berlin",
+        month: "2-digit"
+      }
+    ).format(new Date())
+  );
+
+  if (monat <= 2 || monat === 12)
+    return "❄️ Winter";
+
+  if (monat <= 5)
+    return "🌱 Frühling";
+
+  if (monat <= 8)
+    return "☀️ Sommer";
+
+  return "🍂 Herbst";
+}
+
+function wetter() {
+  const wetterListe = [
+    "☀️ sonnig",
+    "☁️ bewölkt",
+    "🌧️ Regen",
+    "⛈️ Gewitter",
+    "🌫️ Nebel",
+    "❄️ Schnee",
+    "🌪️ Sturm",
+    "✨ magisches Wetter"
+  ];
+
+  return wetterListe[
+    zufall(0, wetterListe.length - 1)
+  ];
+}
+
+function itemFinden(name) {
+  const such = normalisieren(name);
+
+  return markt.find(
+    item =>
+      normalisieren(item[0]) === such
+  ) ||
+  markt.find(
+    item =>
+      normalisieren(item[0]).includes(such)
+  );
 }
 
 
-async function supabase(
-  path,
-  options = {}
-) {
+/* =========================================================
+   🗄️ SUPABASE
+========================================================= */
+
+async function supabase(path, options = {}) {
+
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY fehlt."
+    );
+  }
 
   const response =
     await fetch(
-      SUPABASE_URL + path,
+      `${SUPABASE_URL}${path}`,
       {
         ...options,
 
-        headers:
-          dbHeaders(
-            options.headers || {}
-          ),
+        headers: {
+          apikey:
+            SUPABASE_SERVICE_ROLE_KEY,
+
+          Authorization:
+            `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+
+          "Content-Type":
+            "application/json",
+
+          ...(options.headers || {})
+        }
       }
     );
 
@@ -149,7 +446,6 @@ async function supabase(
     await response.text();
 
   if (!response.ok) {
-
     throw new Error(
       `Supabase ${response.status}: ${text}`
     );
@@ -160,33 +456,24 @@ async function supabase(
     : null;
 }
 
-
 async function rpc(
   name,
   body = {}
 ) {
-
   return supabase(
     `/rest/v1/rpc/${name}`,
     {
       method: "POST",
-
       body:
-        JSON.stringify(body),
+        JSON.stringify(body)
     }
   );
 }
-
-
-/* =====================================================
-   XP
-===================================================== */
 
 async function xpHinzufuegen(
   username,
   xp
 ) {
-
   try {
 
     await rpc(
@@ -196,58 +483,25 @@ async function xpHinzufuegen(
           normalisieren(username),
 
         xp_menge:
-          Number(xp) || 0,
+          Number(xp) || 0
       }
     );
 
   } catch (error) {
 
     console.error(
-      "❌ XP:",
+      "❌ XP hinzufügen:",
       error.message
     );
+
   }
 }
 
-
-async function xpAnzeigen(
-  username
-) {
-
-  const profil =
-    await profilAnlegen(
-      username
-    );
-
-  const xp =
-    Number(
-      profil.xp || 0
-    );
-
-  const level =
-    Math.floor(
-      xp / 100
-    ) + 1;
-
-  return (
-    `🦊 @${username} ` +
-    `du hast ${xp} XP ` +
-    `und bist Level ${level}!`
-  );
-}
-
-
-/* =====================================================
-   PROFIL
-===================================================== */
-
-async function profilHolen(
-  username
-) {
+async function profilDB(username) {
 
   try {
 
-    const rows =
+    const data =
       await supabase(
         `/rest/v1/fuchsprofile` +
         `?spieler=eq.${encodeURIComponent(
@@ -256,12 +510,12 @@ async function profilHolen(
         `&limit=1`
       );
 
-    return rows?.[0] || null;
+    return data?.[0] || null;
 
   } catch (error) {
 
     console.error(
-      "❌ Profil holen:",
+      "❌ Profil laden:",
       error.message
     );
 
@@ -269,171 +523,91 @@ async function profilHolen(
   }
 }
 
-
-async function profilAnlegen(
+async function aktivitaetSpeichern(
   username
 ) {
-
-  const user =
-    normalisieren(username);
-
-  let profil =
-    await profilHolen(user);
-
-  if (profil) {
-    return profil;
-  }
 
   try {
 
     await supabase(
-      "/rest/v1/fuchsprofile?on_conflict=spieler",
+      `/rest/v1/fuchs_aktivitaet?on_conflict=spieler`,
       {
         method: "POST",
 
         headers: {
           Prefer:
-            "resolution=merge-duplicates",
+            "resolution=merge-duplicates"
         },
 
         body:
           JSON.stringify({
-            spieler: user,
-            xp: 0,
-            rudel: null,
-            pokemon: null,
-            pvp_siege: 0,
-            pvp_niederlagen: 0,
-          }),
+            spieler:
+              normalisieren(username),
+
+            letzte_aktivitaet:
+              new Date().toISOString()
+          })
       }
     );
 
   } catch (error) {
 
     console.error(
-      "❌ Profil anlegen:",
+      "❌ Aktivität:",
       error.message
     );
+
   }
-
-  profil =
-    await profilHolen(user);
-
-  return (
-    profil || {
-      spieler: user,
-      xp: 0,
-      rudel: null,
-      pokemon: null,
-      pvp_siege: 0,
-      pvp_niederlagen: 0,
-    }
-  );
 }
 
 
-async function profil(
-  username
-) {
-
-  const p =
-    await profilAnlegen(
-      username
-    );
-
-  const xp =
-    Number(
-      p.xp || 0
-    );
-
-  const level =
-    Math.floor(
-      xp / 100
-    ) + 1;
-
-  const pokemon =
-    eigenePokemon[
-      normalisieren(username)
-    ] ||
-    p.pokemon ||
-    "kein Pokémon";
-
-  return (
-    `🦊 @${username} ` +
-    `| Level ${level} ` +
-    `| ${xp} XP ` +
-    `| ${p.rudel || "❓ kein Rudel"} ` +
-    `| 🐾 ${pokemon} ` +
-    `| ⚔️ ${p.pvp_siege || 0} Siege ` +
-    `/ ${p.pvp_niederlagen || 0} Niederlagen`
-  );
-}
-
-
-/* =====================================================
-   STREAM ELEMENTS
-===================================================== */
+/* =========================================================
+   📺 STREAM ELEMENTS
+========================================================= */
 
 async function streamElementsChannelHolen() {
 
-  if (streamElementsChannel) {
+  if (
+    streamElementsChannel ||
+    !STREAMELEMENTS_JWT
+  ) {
     return streamElementsChannel;
   }
 
-  if (!STREAMELEMENTS_JWT) {
+  const response =
+    await fetch(
+      "https://api.streamelements.com/kappa/v2/channels/me",
+      {
+        headers: {
+          Authorization:
+            `Bearer ${STREAMELEMENTS_JWT}`,
 
-    console.error(
-      "❌ STREAMELEMENTS_JWT fehlt."
-    );
-
-    return null;
-  }
-
-  try {
-
-    const response =
-      await fetch(
-        "https://api.streamelements.com/kappa/v2/channels/me",
-        {
-          headers: {
-            Authorization:
-              `Bearer ${STREAMELEMENTS_JWT}`,
-
-            Accept:
-              "application/json",
-          },
+          Accept:
+            "application/json"
         }
-      );
-
-    const text =
-      await response.text();
-
-    if (!response.ok) {
-      throw new Error(text);
-    }
-
-    const data =
-      JSON.parse(text);
-
-    streamElementsChannel =
-      data?._id ||
-      data?.channel?._id ||
-      data?.username ||
-      null;
-
-    return streamElementsChannel;
-
-  } catch (error) {
-
-    console.error(
-      "❌ StreamElements Kanal:",
-      error.message
+      }
     );
 
-    return null;
-  }
-}
+  const text =
+    await response.text();
 
+  if (!response.ok) {
+
+    throw new Error(
+      `StreamElements Channel ${response.status}: ${text}`
+    );
+
+  }
+
+  const data =
+    JSON.parse(text);
+
+  streamElementsChannel =
+    data?._id ||
+    null;
+
+  return streamElementsChannel;
+}
 
 async function streamelementsSenden(
   text
@@ -448,8 +622,8 @@ async function streamelementsSenden(
 
   if (!STREAMELEMENTS_JWT) {
 
-    console.error(
-      "❌ StreamElements JWT fehlt."
+    console.log(
+      "⚠️ StreamElements JWT fehlt."
     );
 
     return false;
@@ -461,6 +635,11 @@ async function streamelementsSenden(
       await streamElementsChannelHolen();
 
     if (!channelId) {
+
+      console.error(
+        "❌ StreamElements Channel-ID fehlt."
+      );
+
       return false;
     }
 
@@ -480,14 +659,14 @@ async function streamelementsSenden(
               "application/json",
 
             Accept:
-              "application/json",
+              "application/json"
           },
 
           body:
             JSON.stringify({
               message:
-                String(text),
-            }),
+                String(text).slice(0, 480)
+            })
         }
       );
 
@@ -512,1345 +691,2299 @@ async function streamelementsSenden(
 }
 
 
-/* =====================================================
-   NORMALE QUESTS
-===================================================== */
+/* =========================================================
+   🌍 FUCHSWELT – SPIELERDATEN
+========================================================= */
 
-async function normaleQuestsPruefen(
-  username,
+const welt = new Map();
+
+function neuerSpieler(username) {
+
+  return {
+
+    foxName: null,
+
+    bauName:
+      "Mein Fuchsbau",
+
+    stufe: 1,
+
+    muenzen: 100,
+
+    energie: 100,
+
+    rudel: null,
+
+    pokemon:
+      eigenePokemon[
+        normalisieren(username)
+      ] || null,
+
+    inventar: {},
+
+    begleiter: [],
+
+    aktiveBegleiter: [],
+
+    freundschaft: 0,
+
+    ruf: 0,
+
+    erfolge: [],
+
+    titel:
+      "Jungfuchs",
+
+    schicksal: [],
+
+    chronik: [],
+
+    entdeckungen: [],
+
+    storyIndex: 0,
+
+    kraefte: {
+      feuer: false,
+      wasser: false,
+      wald: false,
+      ice: false
+    },
+
+    fuenftesFragment: false,
+
+    geheimarchiv:
+      false,
+
+    tor:
+      false,
+
+    legenden: [],
+
+    ruhmeshalle: [],
+
+    fuchskern: 0,
+
+    dekor: [],
+
+    bank: 0,
+
+    post: [],
+
+    tausch: [],
+
+    teams: [],
+
+    questTag: null,
+
+    questIndex: 0,
+
+    questAntworten: [],
+
+    messageCount: 0,
+
+    letzterDailyBonus:
+      null,
+
+    adventure: null
+  };
+}
+
+function spieler(username) {
+
+  const u =
+    normalisieren(username);
+
+  if (!welt.has(u)) {
+
+    welt.set(
+      u,
+      neuerSpieler(u)
+    );
+
+  }
+
+  return welt.get(u);
+}
+
+
+/* =========================================================
+   📖 CHRONIK / ERFOLGE
+========================================================= */
+
+function chronikEintrag(
+  w,
   text
 ) {
 
-  try {
+  w.chronik.unshift(
+    `${new Date().toLocaleString(
+      "de-DE"
+    )}: ${text}`
+  );
 
-    await rpc(
-      "quest_nachricht_verarbeiten",
-      {
-        spieler_name:
-          normalisieren(username),
+  w.chronik =
+    w.chronik.slice(0, 50);
+}
 
-        nachricht:
-          String(text || ""),
-      }
-    );
+function erfolgFreischalten(
+  w,
+  name
+) {
 
-  } catch (error) {
+  if (
+    !w.erfolge.includes(name)
+  ) {
 
-    console.error(
-      "❌ Normale Quest:",
-      error.message
-    );
+    w.erfolge.push(name);
+
+    return true;
+  }
+
+  return false;
+}
+
+function titelAktualisieren(w) {
+
+  if (
+    w.erfolge.length >= 15
+  ) {
+    w.titel =
+      "Dorffuchs";
+  }
+
+  else if (
+    w.erfolge.length >= 10
+  ) {
+    w.titel =
+      "Spurensucher";
+  }
+
+  else if (
+    w.erfolge.length >= 5
+  ) {
+    w.titel =
+      "Abenteurer";
   }
 }
 
-
-/* =====================================================
-   PERSÖNLICHE TAGESQUESTS
-
-   WICHTIG:
-
-   - 10 Aufgaben pro Tag
-   - immer nur EINE Aufgabe gleichzeitig
-   - !quest zeigt die nächste Aufgabe
-   - !antwort beantwortet die aktuelle Aufgabe
-   - jede Aufgabe = 10 XP
-   - nächste Aufgabe erscheint NICHT automatisch
-===================================================== */
-
-const persoenlicheQuestStatus =
-  new Map();
-
-
-/* =====================================================
-   DONNERSTAG
-===================================================== */
-
-const questDonnerstag = [
-
-  {
-    text:
-      "🔥 Erfinde einen Namen für einen neuen Ort im Feuertal.",
-  },
-
-  {
-    text:
-      "🌊 Erfinde einen Namen für einen geheimen Ort in den Wasserlanden.",
-  },
-
-  {
-    text:
-      "🌲 Erfinde ein Geheimnis, das im Fuchswald verborgen sein könnte.",
-  },
-
-  {
-    text:
-      "🧊 Erfinde ein Wesen, das in den Eisbergen lebt.",
-  },
-
-  {
-    text:
-      "🌙 Erfinde einen Namen für ein Geheimnis der Nacht.",
-  },
-
-  {
-    text:
-      "🦊 Erfinde einen Namen für einen besonderen Fuchs aus der Fuchswelt.",
-  },
-
-  {
-    text:
-      "✨ Erfinde einen magischen Gegenstand für die Fuchswelt.",
-  },
-
-  {
-    text:
-      "🐾 Erfinde ein neues Wesen für die Fuchswelt.",
-  },
-
-  {
-    text:
-      "🗺️ Erfinde einen Namen für einen geheimen Ort auf der Weltkarte.",
-  },
-
-  {
-    text:
-      "🌟 Erfinde einen Namen für ein großes Fest in Fuchsdorf.",
-  },
-];
-
-
-/* =====================================================
-   MONTAG
-===================================================== */
-
-const questMontag = [
-
-  {
-    text:
-      "🦊 Erfinde einen Namen für deinen eigenen Fuchs.",
-  },
-
-  {
-    text:
-      "🔥 Erfinde eine neue Attacke des Feuerrudels.",
-  },
-
-  {
-    text:
-      "🌊 Erfinde einen Schatz aus den Wasserlanden.",
-  },
-
-  {
-    text:
-      "🌲 Erfinde ein Geheimnis des Fuchswaldes.",
-  },
-
-  {
-    text:
-      "🧊 Erfinde einen Schatz aus den Eisbergen.",
-  },
-
-  {
-    text:
-      "🐾 Erfinde einen neuen Begleiter.",
-  },
-
-  {
-    text:
-      "✨ Erfinde eine magische Fähigkeit.",
-  },
-
-  {
-    text:
-      "🗺️ Erfinde einen geheimen Ort.",
-  },
-
-  {
-    text:
-      "🌙 Erfinde ein Geheimnis der Nacht.",
-  },
-
-  {
-    text:
-      "🌟 Erfinde eine neue Geschichte für die Fuchswelt.",
-  },
-];
-
-
-/* =====================================================
-   DIENSTAG
-===================================================== */
-
-const questDienstag = [
-
-  {
-    text:
-      "🎮 Nenne dein Lieblings-Videospiel.",
-  },
-
-  {
-    text:
-      "🎬 Nenne deinen Lieblingsfilm.",
-  },
-
-  {
-    text:
-      "🎵 Nenne deinen Lieblingssong.",
-  },
-
-  {
-    text:
-      "🐾 Nenne dein Lieblingstier.",
-  },
-
-  {
-    text:
-      "🦊 Erfinde einen lustigen Fuchsnamen.",
-  },
-
-  {
-    text:
-      "🎨 Erfinde eine neue Farbe für einen Fuchs.",
-  },
-
-  {
-    text:
-      "😂 Erfinde einen lustigen Pokémon-Namen.",
-  },
-
-  {
-    text:
-      "🎭 Erfinde einen Namen für einen Videospiel-Charakter.",
-  },
-
-  {
-    text:
-      "🌟 Erfinde einen Namen für deine eigene Spielwelt.",
-  },
-
-  {
-    text:
-      "✨ Erfinde einen magischen Gegenstand.",
-  },
-];
-
-
-/* =====================================================
-   MITTWOCH
-===================================================== */
-
-const questMittwoch = [
-
-  {
-    text:
-      "🌳 Erfinde einen Namen für einen Baum im Fuchswald.",
-  },
-
-  {
-    text:
-      "💧 Erfinde eine besondere Quelle in den Wasserlanden.",
-  },
-
-  {
-    text:
-      "🔥 Erfinde einen Vulkan im Feuertal.",
-  },
-
-  {
-    text:
-      "🧊 Erfinde einen geheimen Ort in den Eisbergen.",
-  },
-
-  {
-    text:
-      "🌙 Erfinde ein Wesen der Nacht.",
-  },
-
-  {
-    text:
-      "🐾 Erfinde einen seltenen Begleiter.",
-  },
-
-  {
-    text:
-      "🗺️ Erfinde einen geheimen Weg.",
-  },
-
-  {
-    text:
-      "🔐 Erfinde ein Geheimnis für das Geheimarchiv.",
-  },
-
-  {
-    text:
-      "🌟 Erfinde eine Legende der Fuchswelt.",
-  },
-
-  {
-    text:
-      "🏡 Erfinde einen Namen für dein eigenes Fuchshaus.",
-  },
-];
-
-
-/* =====================================================
-   FREITAG
-===================================================== */
-
-const questFreitag = [
-
-  {
-    text:
-      "🎭 Erfinde einen lustigen Pokémon-Namen für dich selbst.",
-  },
-
-  {
-    text:
-      "😂 Wenn du ein Pokémon wärst: Welche besondere Fähigkeit hättest du?",
-  },
-
-  {
-    text:
-      "🎨 Erfinde eine neue Pokémon-Farbe.",
-  },
-
-  {
-    text:
-      "🎤 Wie würde dein Pokémon-Trainername heißen?",
-  },
-
-  {
-    text:
-      "🎮 Welches Videospiel würdest du sofort kaufen, wenn es heute kostenlos wäre?",
-  },
-
-  {
-    text:
-      "🎵 Welchen Song könntest du gerade immer wieder hören?",
-  },
-
-  {
-    text:
-      "🎬 Wenn dein Leben ein Videospiel wäre, wie würde das Spiel heißen?",
-  },
-
-  {
-    text:
-      "🐾 Wenn du ein Haustier aus einem Videospiel haben könntest, welches würdest du wählen?",
-  },
-
-  {
-    text:
-      "🕹️ Nenne ein Videospiel, das du niemals langweilig findest.",
-  },
-
-  {
-    text:
-      "🐾 Wenn dein Haustier ein Mensch wäre, welchen Beruf würde es haben?",
-  },
-];
-
-
-/* =====================================================
-   SAMSTAG
-===================================================== */
-
-const questSamstag = [
-
-  {
-    text:
-      "🎮 Nenne dein absolutes Lieblings-Videospiel.",
-  },
-
-  {
-    text:
-      "🐶 Wenn du dir heute ein neues Haustier aussuchen könntest, welches Tier würdest du nehmen?",
-  },
-
-  {
-    text:
-      "🎵 Schreibe den Titel deines Lieblingssongs.",
-  },
-
-  {
-    text:
-      "🎬 Welchen Film würdest du gerne noch einmal zum ersten Mal sehen können?",
-  },
-
-  {
-    text:
-      "🚗 GTA: Wenn du in GTA ein eigenes Fahrzeug bauen könntest, wie würde es aussehen?",
-  },
-
-  {
-    text:
-      "🚀 Wenn du für einen Tag ins Weltall fliegen könntest, was würdest du dort unbedingt machen?",
-  },
-
-  {
-    text:
-      "👻 Du musst eine Nacht allein in einem verlassenen Haus verbringen. Was würdest du mitnehmen?",
-  },
-
-  {
-    text:
-      "🦸 Wenn du für einen Tag ein Superheld sein könntest, welche Superkraft würdest du wählen?",
-  },
-
-  {
-    text:
-      "🏖️ Du bekommst eine kostenlose Reise an jeden Ort der Welt. Wohin würdest du fliegen?",
-  },
-
-  {
-    text:
-      "🎨 Erfinde einen Namen für einen eigenen Anime.",
-  },
-];
-
-
-/* =====================================================
-   SONNTAG
-===================================================== */
-
-const questSonntag = [
-
-  {
-    text:
-      "🌟 Erfinde eine neue Geschichte für die Fuchswelt.",
-  },
-
-  {
-    text:
-      "🦊 Erfinde einen besonderen Fuchs.",
-  },
-
-  {
-    text:
-      "🔥 Erfinde eine neue Kraft des Feuerrudels.",
-  },
-
-  {
-    text:
-      "🌊 Erfinde eine neue Kraft der Wasserlande.",
-  },
-
-  {
-    text:
-      "🌲 Erfinde eine neue Kraft des Fuchswaldes.",
-  },
-
-  {
-    text:
-      "🧊 Erfinde eine neue Kraft der Eisberge.",
-  },
-
-  {
-    text:
-      "🌙 Erfinde ein Geheimnis der Nacht.",
-  },
-
-  {
-    text:
-      "🐾 Erfinde ein seltenes Wesen.",
-  },
-
-  {
-    text:
-      "🔐 Erfinde ein Geheimnis für das Geheimarchiv.",
-  },
-
-  {
-    text:
-      "🌟 Erfinde eine Legende für die Fuchswelt.",
-  },
-];
-
-
-/* =====================================================
-   TAGESSET
-===================================================== */
-
-function tagesQuestSet() {
-
-  const tag =
-    new Date().getDay();
-
-
-  if (tag === 1) {
-    return questMontag;
+function inventarHinzufuegen(
+  w,
+  item,
+  menge = 1
+) {
+
+  w.inventar[item] =
+    (w.inventar[item] || 0)
+    + menge;
+}
+
+function inventarEntfernen(
+  w,
+  item,
+  menge = 1
+) {
+
+  if (
+    (w.inventar[item] || 0)
+    < menge
+  ) {
+    return false;
   }
 
+  w.inventar[item] -= menge;
 
-  if (tag === 2) {
-    return questDienstag;
+  if (
+    w.inventar[item] <= 0
+  ) {
+    delete w.inventar[item];
   }
 
-
-  if (tag === 3) {
-    return questMittwoch;
-  }
-
-
-  if (tag === 4) {
-    return questDonnerstag;
-  }
-
-
-  if (tag === 5) {
-    return questFreitag;
-  }
-
-
-  if (tag === 6) {
-    return questSamstag;
-  }
-
-
-  return questSonntag;
+  return true;
 }
 
 
-/* =====================================================
-   BERLIN DATUM
-===================================================== */
+/* =========================================================
+   🎯 PERSÖNLICHE TAGESQUESTS
+   IMMER NUR EINE QUEST
+========================================================= */
 
-function berlinDatum() {
+const tagesquests = {
 
-  return new Intl.DateTimeFormat(
-    "de-DE",
-    {
-      timeZone:
-        "Europe/Berlin",
+  0: [
+    ["🎮 Nenne dein Lieblingsspiel für einen entspannten Abend.",10],
+    ["🐶 Was würde dein Haustier zuerst sagen, wenn es sprechen könnte?",10],
+    ["🎬 Nenne deinen Lieblingsfilm.",10],
+    ["🎵 Welcher Song gehört zu einem perfekten Abend?",10],
+    ["⚽ Welchen Sport würdest du ausprobieren?",10],
+    ["🦊 Erfinde einen lustigen Fuchsnamen.",10],
+    ["🏖️ Beschreibe deinen perfekten Urlaub.",10],
+    ["👻 Erfinde einen Namen für ein gruseliges Wesen.",10],
+    ["🎨 Erfinde einen Namen für eine geheime Fuchswelt.",10],
+    ["🌟 Was ist dein größter Wunsch für die Fuchswelt?",10]
+  ],
 
-      year: "numeric",
+  1: [
+    ["📝 Schreibe 10 Nachrichten im Chat.",10],
+    ["📝 Schreibe 20 Nachrichten im Chat.",10],
+    ["📝 Schreibe 30 Nachrichten im Chat.",10],
+    ["📝 Schreibe 50 Nachrichten im Chat.",10],
+    ["📝 Schreibe 75 Nachrichten im Chat.",10],
+    ["⚡ Schreibe den Namen deines Lieblings-Pokémon in den Chat.",10],
+    ["🌟 Schreibe, welches Pokémon du gerne als Partner auf einem Abenteuer hättest.",10],
+    ["😂 Erfinde einen lustigen Spitznamen für ein Pokémon.",10],
+    ["🧪 Erfinde eine neue Pokémon-Attacke.",10],
+    ["😂 Erfinde eine lustige Pokémon-Entwicklung.",10]
+  ],
 
-      month: "2-digit",
+  2: [
+    ["🎬 Nenne deinen Lieblings-Anime.",10],
+    ["🎮 Nenne ein Spiel, das du gerade gerne spielen würdest.",10],
+    ["🐾 Welches Tier passt am besten zu deinem Charakter?",10],
+    ["🎵 Nenne einen Song, den du mit einem Abenteuer verbindest.",10],
+    ["😂 Erfinde einen lustigen NPC-Namen.",10],
+    ["🦸 Welche Superkraft würdest du testen?",10],
+    ["🧙 Erfinde einen Namen für eine Fantasy-Stadt.",10],
+    ["🚗 GTA: Was wäre dein perfekter GTA-Job?",10],
+    ["👻 Erfinde ein Wesen, das nachts durch Fuchsdorf läuft.",10],
+    ["🎨 Erfinde einen Namen für ein eigenes Videospiel.",10]
+  ],
 
-      day: "2-digit",
-    }
-  ).format(
-    new Date()
+  3: [
+    ["🌳 Erfinde einen Namen für einen alten Baum.",10],
+    ["💧 Erfinde einen Namen für eine magische Quelle.",10],
+    ["🔥 Erfinde einen Namen für einen Vulkanort.",10],
+    ["🧊 Erfinde einen Namen für einen Eispalast.",10],
+    ["🌊 Erfinde einen Namen für eine Unterwasserstadt.",10],
+    ["🦊 Erfinde einen neuen Fuchstitel.",10],
+    ["🗝️ Erfinde einen Namen für einen geheimen Schlüssel.",10],
+    ["📖 Erfinde einen Titel für ein Kapitel der Fuchs-Chronik.",10],
+    ["👹 Erfinde einen Namen für ein seltenes Wesen.",10],
+    ["🌙 Erfinde einen Namen für eine Nachtprüfung.",10]
+  ],
+
+  4: [
+    ["🎬 Nenne eine Serie, die du jederzeit wieder anschauen würdest.",10],
+    ["🎮 Nenne ein Videospiel, das du gerne mit Freunden spielen würdest.",10],
+    ["🦸 Wie würde dein Superheldenname heißen?",10],
+    ["🎨 Erfinde einen Namen für einen eigenen Charakter.",10],
+    ["👻 Welches Horrorspiel würdest du nachts spielen?",10],
+    ["🎵 Nenne einen Song, der sofort gute Laune macht.",10],
+    ["🚀 Was wäre dein erstes Ziel im Weltall?",10],
+    ["🐾 Welches Tier wäre dein perfekter Abenteuerbegleiter?",10],
+    ["🧙 Erfinde einen Namen für einen mächtigen Fantasy-Zauber.",10],
+    ["🏠 Wie würde dein perfektes Zuhause in der Fuchswelt aussehen?",10]
+  ],
+
+  5: [
+    ["🎭 Erfinde einen lustigen Pokémon-Namen für dich selbst.",10],
+    ["😂 Welche besondere Fähigkeit hättest du als Pokémon?",10],
+    ["🎨 Erfinde eine neue Pokémon-Farbe.",10],
+    ["🎤 Wie würde dein Pokémon-Trainername heißen?",10],
+    ["🎮 Welches Videospiel würdest du sofort kaufen?",10],
+    ["🎵 Welchen Song könntest du gerade immer wieder hören?",10],
+    ["🎬 Wie würde dein Leben als Videospiel heißen?",10],
+    ["🐾 Welches Videospiel-Haustier würdest du wählen?",10],
+    ["🕹️ Nenne ein Spiel, das nie langweilig wird.",10],
+    ["🐾 Wenn dein Haustier Mensch wäre: Welchen Beruf hätte es?",10]
+  ],
+
+  6: [
+    ["🎮 Nenne dein absolutes Lieblings-Videospiel.",10],
+    ["🐶 Welches Haustier würdest du heute wählen?",10],
+    ["🎵 Schreibe deinen Lieblingssong.",10],
+    ["🎬 Welchen Film würdest du gerne zum ersten Mal sehen?",10],
+    ["🚗 GTA: Wie sähe dein eigenes Fahrzeug aus?",10],
+    ["🚀 Was würdest du im Weltall unbedingt machen?",10],
+    ["👻 Was würdest du in ein verlassenes Haus mitnehmen?",10],
+    ["🦸 Welche Superkraft würdest du wählen?",10],
+    ["🏖️ Wohin würdest du kostenlos reisen?",10],
+    ["🎨 Erfinde einen Namen für einen eigenen Anime.",10]
+  ]
+};
+
+function questHeute() {
+
+  return (
+    tagesquests[
+      new Date().getDay()
+    ] ||
+    tagesquests[0]
   );
 }
 
+function questTagPruefen(w) {
 
-/* =====================================================
-   QUEST STATUS HOLEN
-===================================================== */
-
-function persoenlicheQuestStatusHolen(
-  username
-) {
-
-  const user =
-    normalisieren(username);
-
-  const datum =
+  const heute =
     berlinDatum();
 
-  let status =
-    persoenlicheQuestStatus.get(
-      user
-    );
-
-
   if (
-    !status ||
-    status.datum !== datum
+    w.questTag !== heute
   ) {
 
-    status = {
+    w.questTag =
+      heute;
 
-      datum,
+    w.questIndex =
+      0;
 
-      aktuelleQuest:
-        0,
+    w.questAntworten =
+      [];
 
-      gestartet:
-        false,
-
-      quests:
-        tagesQuestSet().map(
-          quest => ({
-            text:
-              quest.text,
-
-            xp:
-              10,
-
-            abgeschlossen:
-              false,
-          })
-        ),
-    };
-
-
-    persoenlicheQuestStatus.set(
-      user,
-      status
-    );
+    w.messageCount =
+      0;
   }
-
-
-  return status;
 }
 
-
-/* =====================================================
-   !QUEST
-
-   Zeigt IMMER nur die nächste Aufgabe.
-===================================================== */
-
-async function persoenlicheQuestAnzeigen(
+function questAnzeigen(
   username
 ) {
 
-  const status =
-    persoenlicheQuestStatusHolen(
-      username
-    );
+  const w =
+    spieler(username);
 
-
-  /*
-     Alle 10 erledigt
-  */
+  questTagPruefen(w);
 
   if (
-    status.aktuelleQuest >=
-    status.quests.length
+    w.questIndex >= 10
   ) {
 
     return (
-      `🎉 @${username} Du hast heute deine ` +
-      `10 persönlichen Aufgaben abgeschlossen ` +
-      `und 100 XP bekommen! 🦊 ` +
+      `🦊 @${username} Du hast heute bereits ` +
+      `alle 10 persönlichen Aufgaben abgeschlossen. ` +
       `Komm morgen wieder, da bekommst du neue Aufgaben.`
     );
   }
 
-
-  const nummer =
-    status.aktuelleQuest + 1;
-
-
-  const quest =
-    status.quests[
-      status.aktuelleQuest
-    ];
-
-
-  status.gestartet =
-    true;
-
+  const q =
+    questHeute()[w.questIndex];
 
   return (
     `🎯 @${username} Deine persönliche Tagesquest ` +
-    `${nummer}/10: ${quest.text} ` +
-    `→ Belohnung: +10 XP 🦊 ` +
+    `${w.questIndex + 1}/10: ` +
+    `${q[0]} → Belohnung: +${q[1]} XP 🦊 ` +
     `Antworte mit !antwort [deine Antwort]`
   );
 }
 
-
-/* =====================================================
-   !ANTWORT
-
-   Nur damit wird eine persönliche kreative
-   Tagesquest abgeschlossen.
-===================================================== */
-
-async function persoenlicheQuestAntwort(
+async function questAntwort(
   username,
   antwort
 ) {
 
-  const status =
-    persoenlicheQuestStatusHolen(
-      username
-    );
+  const w =
+    spieler(username);
 
-
-  /*
-     Keine Antwort
-  */
+  questTagPruefen(w);
 
   if (
-    !antwort ||
-    !String(antwort).trim()
+    w.questIndex >= 10
   ) {
 
     return (
-      `@${username} ❌ Bitte schreibe deine Antwort hinter !antwort.`
+      `🦊 @${username} Du hast heute bereits ` +
+      `alle 10 persönlichen Aufgaben abgeschlossen.`
     );
   }
 
-
-  /*
-     Alle erledigt
-  */
-
   if (
-    status.aktuelleQuest >=
-    status.quests.length
+    !antwort.trim()
   ) {
 
     return (
-      `@${username} 🎉 Du hast heute bereits alle 10 persönlichen Aufgaben abgeschlossen. 🦊`
+      `🦊 @${username} Bitte schreibe eine Antwort ` +
+      `hinter !antwort.`
     );
   }
 
+  const q =
+    questHeute()[w.questIndex];
 
-  /*
-     !quest wurde vorher noch nicht benutzt
-  */
+  const nr =
+    w.questIndex + 1;
 
-  if (
-    !status.gestartet
-  ) {
+  w.questAntworten.push({
+    nummer: nr,
+    antwort:
+      antwort.trim()
+  });
 
-    return (
-      `@${username} ❌ Schreibe zuerst !quest, damit ich dir deine aktuelle Tagesquest geben kann. 🦊`
-    );
-  }
-
-
-  const quest =
-    status.quests[
-      status.aktuelleQuest
-    ];
-
-
-  /*
-     Quest abschließen
-  */
-
-  quest.abgeschlossen =
-    true;
-
+  w.questIndex++;
 
   await xpHinzufuegen(
     username,
-    10
+    q[1]
   );
 
+  w.muenzen += 5;
 
-  const nummer =
-    status.aktuelleQuest + 1;
+  w.ruf += 1;
 
+  chronikEintrag(
+    w,
+    `Tagesquest ${nr}/10 abgeschlossen`
+  );
 
-  status.aktuelleQuest += 1;
+  erfolgFreischalten(
+    w,
+    "Erste Quest"
+  );
 
-
-  status.gestartet =
-    false;
-
-
-  /*
-     Letzte Quest
-  */
+  titelAktualisieren(w);
 
   if (
-    status.aktuelleQuest >=
-    status.quests.length
+    nr >= 10
   ) {
 
+    chronikEintrag(
+      w,
+      "Alle 10 persönlichen Tagesquests abgeschlossen"
+    );
+
     return (
-      `🎉 @${username} Tagesquest ${nummer}/10 erfolgreich abgeschlossen! ` +
-      `→ +10 XP 🦊 ` +
-      `Du hast heute deine 10 persönlichen Aufgaben abgeschlossen ` +
-      `und insgesamt 100 XP bekommen! 🎉 ` +
+      `🎉 @${username} Du hast heute deine ` +
+      `10 persönlichen Aufgaben abgeschlossen ` +
+      `und +${q[1]} XP bekommen. 🦊 ` +
       `Komm morgen wieder, da bekommst du neue Aufgaben.`
     );
   }
 
-
-  /*
-     Noch weitere Aufgaben vorhanden.
-
-     Die nächste wird NICHT automatisch angezeigt.
-  */
-
   return (
-    `🎉 @${username} Tagesquest ${nummer}/10 erfolgreich abgeschlossen! ` +
-    `→ +10 XP 🦊 ` +
+    `🎉 @${username} Tagesquest ${nr}/10 ` +
+    `erfolgreich abgeschlossen! → +${q[1]} XP 🦊 ` +
     `Schreibe !quest, wenn du deine nächste Aufgabe möchtest.`
   );
 }
 
 
-/* =====================================================
-   RUDELWAHL
-===================================================== */
+/* =========================================================
+   🦊 PROFIL
+========================================================= */
 
-async function rudelwahl(
-  username,
-  auswahl
+async function profil(
+  username
 ) {
 
-  const key =
-    normalisieren(
-      auswahl
-    );
+  const w =
+    spieler(username);
 
-  const rudel =
-    rudelMap[key];
+  const p =
+    await profilDB(username);
 
+  const xp =
+    Number(p?.xp || 0);
 
-  if (!rudel) {
-
-    return (
-      `@${username} ❌ Dieses Rudel gibt es nicht. ` +
-      `Wähle Feuer, Wasser, Wald oder ICE.`
-    );
-  }
-
-
-  try {
-
-    await supabase(
-      "/rest/v1/fuchsprofile?on_conflict=spieler",
-      {
-        method: "POST",
-
-        headers: {
-          Prefer:
-            "resolution=merge-duplicates",
-        },
-
-        body:
-          JSON.stringify({
-            spieler:
-              normalisieren(username),
-
-            rudel,
-          }),
-      }
-    );
-
-
-    return (
-      `@${username} 🐺 Du bist jetzt im ${rudel}!`
-    );
-
-  } catch (error) {
-
-    console.error(
-      "❌ Rudel speichern:",
-      error.message
-    );
-
-
-    return (
-      `@${username} ❌ Dein Rudel konnte nicht gespeichert werden.`
-    );
-  }
+  return (
+    `🦊 ${w.foxName || username} | ` +
+    `${w.rudel || "❔ Noch kein Rudel"} | ` +
+    `👑 ${w.titel} | ` +
+    `⭐ Level ${levelAusXP(xp)} | ` +
+    `${xp} XP | ` +
+    `💰 ${w.muenzen}🪙 | ` +
+    `⚡ ${w.energie} Energie | ` +
+    `⭐ Ruf ${w.ruf} | ` +
+    `🏠 ${fuchsbauStufen[w.stufe - 1]}`
+  );
 }
 
 
-/* =====================================================
-   POKÉMON
-===================================================== */
+/* =========================================================
+   🏡 FUCHSDORF
+========================================================= */
 
-async function pokemonWahl(
-  username,
-  auswahl
+function dorf(username) {
+
+  return (
+    `🏡 MitsusundWandasWelt – Fuchsdorf! 🦊 ` +
+    `🏠 Fuchsbau • 🏪 Fuchs-Markt • ` +
+    `🎯 Abenteuer-Tafel • ⚔️ Kampfplatz • ` +
+    `🐾 Begleiter-Haus • 🗺️ Weltkarte • ` +
+    `🌟 Dorfplatz • 🔐 Geheimarchiv • ` +
+    `🌙 Tor der fünf Kräfte`
+  );
+}
+
+
+/* =========================================================
+   🏠 FUCHSBAU
+========================================================= */
+
+function bau(
+  username
 ) {
 
-  const user =
-    normalisieren(username);
+  const w =
+    spieler(username);
 
-  const fest =
-    eigenePokemon[user];
+  const slots =
+    w.stufe * 10;
+
+  const verfuegbareRaeume =
+    raeume.slice(
+      0,
+      Math.min(
+        1 + w.stufe,
+        raeume.length
+      )
+    );
+
+  return (
+    `🏠 @${username} ${w.bauName} | ` +
+    `${fuchsbauStufen[w.stufe - 1]} | ` +
+    `🎒 ${slots} Lagerplätze | ` +
+    `🚪 Räume: ${verfuegbareRaeume.join(", ")} | ` +
+    `🎨 Deko: ${w.dekor.length}`
+  );
+}
 
 
-  if (!auswahl) {
+/* =========================================================
+   🦊 FUCHSNAME
+========================================================= */
 
-    const profil =
-      await profilAnlegen(
-        user
-      );
+function fuchsname(
+  username,
+  name
+) {
+
+  const w =
+    spieler(username);
+
+  const neuerName =
+    String(name || "")
+      .trim()
+      .slice(0, 25);
+
+  if (!neuerName) {
+
+    return (
+      `🦊 @${username} Nutze ` +
+      `!fuchsname [Name].`
+    );
+  }
+
+  if (
+    w.foxName &&
+    w.muenzen < 500
+  ) {
+
+    return (
+      `🦊 @${username} Eine Umbenennung ` +
+      `kostet 500🪙.`
+    );
+  }
+
+  if (w.foxName) {
+    w.muenzen -= 500;
+  }
+
+  w.foxName =
+    neuerName;
+
+  chronikEintrag(
+    w,
+    `Fuchsname geändert: ${neuerName}`
+  );
+
+  return (
+    `🦊 @${username} Dein Fuchs heißt jetzt ` +
+    `${neuerName}!`
+  );
+}
 
 
-    const pokemon =
-      fest ||
-      profil.pokemon;
+/* =========================================================
+   🏠 BAUNAME
+========================================================= */
+
+function bauname(
+  username,
+  name
+) {
+
+  const w =
+    spieler(username);
+
+  const neuerName =
+    String(name || "")
+      .trim()
+      .slice(0, 30);
+
+  if (!neuerName) {
+
+    return (
+      `🏠 @${username} Nutze ` +
+      `!bauname [Name].`
+    );
+  }
+
+  if (
+    w.bauName !== "Mein Fuchsbau" &&
+    w.muenzen < 500
+  ) {
+
+    return (
+      `🏠 @${username} Eine Umbenennung ` +
+      `kostet 500🪙.`
+    );
+  }
+
+  if (
+    w.bauName !== "Mein Fuchsbau"
+  ) {
+    w.muenzen -= 500;
+  }
+
+  w.bauName =
+    neuerName;
+
+  return (
+    `🏠 @${username} Dein Fuchsbau heißt jetzt ` +
+    `„${neuerName}“!`
+  );
+}
 
 
-    if (!pokemon) {
+/* =========================================================
+   🏪 MARKT
+========================================================= */
+
+function marktAnzeigen() {
+
+  const auswahl =
+    markt
+      .slice()
+      .sort(
+        () => Math.random() - 0.5
+      )
+      .slice(0, 12);
+
+  return (
+    `🏪 Fuchs-Markt heute: ` +
+    auswahl
+      .map(
+        item =>
+          `${item[0]} ${item[1]}🪙`
+      )
+      .join(" | ")
+  );
+}
+
+
+/* =========================================================
+   🛍️ KAUFEN
+========================================================= */
+
+async function kaufen(
+  username,
+  name
+) {
+
+  const w =
+    spieler(username);
+
+  const item =
+    itemFinden(name);
+
+  if (!item) {
+
+    return (
+      `🦊 @${username} Dieses Item ` +
+      `gibt es nicht im Fuchs-Markt.`
+    );
+  }
+
+  if (
+    w.muenzen < item[1]
+  ) {
+
+    return (
+      `💰 @${username} Du hast nicht genug ` +
+      `Fuchsmünzen. Preis: ${item[1]}🪙`
+    );
+  }
+
+  w.muenzen -=
+    item[1];
+
+  inventarHinzufuegen(
+    w,
+    item[0]
+  );
+
+  chronikEintrag(
+    w,
+    `Gekauft: ${item[0]}`
+  );
+
+  if (
+    item[2] === "box"
+  ) {
+
+    const belohnungen = [
+      "Fuchslaterne",
+      "Begleiter-Spielzeug",
+      "Energie-Trank",
+      "Alte Schatzkarte"
+    ];
+
+    const reward =
+      belohnungen[
+        zufall(
+          0,
+          belohnungen.length - 1
+        )
+      ];
+
+    inventarHinzufuegen(
+      w,
+      reward
+    );
+
+    return (
+      `📦 @${username} ${item[0]} geöffnet! ` +
+      `Du bekommst ${reward}.`
+    );
+  }
+
+  return (
+    `🛍️ @${username} gekauft: ` +
+    `${item[0]} für ${item[1]}🪙.`
+  );
+}
+
+
+/* =========================================================
+   🎒 INVENTAR
+========================================================= */
+
+function inventar(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  const items =
+    Object.entries(
+      w.inventar
+    );
+
+  if (!items.length) {
+
+    return (
+      `🎒 @${username} Dein Inventar ist leer.`
+    );
+  }
+
+  return (
+    `🎒 @${username} Inventar: ` +
+    items
+      .map(
+        ([name, menge]) =>
+          `${name} x${menge}`
+      )
+      .join(" | ")
+  );
+}
+
+
+/* =========================================================
+   🏦 BANK
+========================================================= */
+
+function bank(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  return (
+    `🏦 @${username} Fuchs-Bank: ` +
+    `Konto ${w.bank}🪙 | ` +
+    `Bargeld ${w.muenzen}🪙 | ` +
+    `Tageszins 1% mit !bank zins`
+  );
+}
+
+function bankAktion(
+  username,
+  aktion,
+  menge
+) {
+
+  const w =
+    spieler(username);
+
+  const n =
+    Math.max(
+      0,
+      Number(menge) || 0
+    );
+
+  if (
+    aktion === "einzahlen"
+  ) {
+
+    if (
+      w.muenzen < n
+    ) {
 
       return (
-        `@${username} 🐾 Du hast noch kein Pokémon. ` +
-        `Nutze !pokemon Name`
+        `🏦 @${username} Dafür hast du ` +
+        `nicht genug Bargeld.`
       );
     }
 
+    w.muenzen -= n;
+    w.bank += n;
 
     return (
-      `@${username} 🐾 Dein Pokémon ist ${pokemon}!`
+      `🏦 @${username} ${n}🪙 eingezahlt.`
     );
   }
 
+  if (
+    aktion === "abheben"
+  ) {
 
-  const pokemon =
-    pokemonListe.find(
-      p =>
-        p.toLowerCase() ===
-        String(auswahl)
-          .trim()
-          .toLowerCase()
-    );
+    if (
+      w.bank < n
+    ) {
 
+      return (
+        `🏦 @${username} So viel liegt ` +
+        `nicht auf deiner Bank.`
+      );
+    }
 
-  if (!pokemon) {
+    w.bank -= n;
+    w.muenzen += n;
 
     return (
-      `@${username} ❌ Dieses Pokémon ist nicht verfügbar.`
+      `🏦 @${username} ${n}🪙 abgehoben.`
     );
   }
 
+  if (
+    aktion === "zins"
+  ) {
 
-  if (fest) {
+    const zins =
+      Math.floor(
+        w.bank * 0.01
+      );
+
+    w.bank += zins;
 
     return (
-      `@${username} ⚡ Dein festes Pokémon ist ${fest}.`
+      `🏦 @${username} Tageszins: +${zins}🪙.`
     );
   }
 
-
-  try {
-
-    await supabase(
-      `/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
-        user
-      )}`,
-      {
-        method: "PATCH",
-
-        body:
-          JSON.stringify({
-            pokemon,
-          }),
-      }
-    );
-
-
-    return (
-      `@${username} 🐾 Dein Pokémon ist jetzt ${pokemon}!`
-    );
-
-  } catch (error) {
-
-    console.error(
-      "❌ Pokémon:",
-      error.message
-    );
-
-
-    return (
-      `@${username} ❌ Pokémon konnte nicht gespeichert werden.`
-    );
-  }
+  return bank(username);
 }
 
 
-/* =====================================================
-   PVP START
-===================================================== */
+/* =========================================================
+   🎁 SCHENKEN
+========================================================= */
+
+function schenken(
+  username,
+  ziel,
+  menge
+) {
+
+  const w =
+    spieler(username);
+
+  const empfaenger =
+    spieler(ziel);
+
+  const n =
+    Math.max(
+      0,
+      Number(menge) || 0
+    );
+
+  if (
+    w.muenzen < n
+  ) {
+
+    return (
+      `💰 @${username} Du hast nicht genug Münzen.`
+    );
+  }
+
+  w.muenzen -= n;
+  empfaenger.muenzen += n;
+
+  chronikEintrag(
+    w,
+    `${n} Münzen an ${ziel} verschenkt`
+  );
+
+  chronikEintrag(
+    empfaenger,
+    `${n} Münzen von ${username} erhalten`
+  );
+
+  return (
+    `🎁 @${username} hat @${ziel} ` +
+    `${n}🪙 geschenkt.`
+  );
+}
+
+
+/* =========================================================
+   📬 POST
+========================================================= */
+
+function post(
+  username,
+  ziel,
+  text
+) {
+
+  const empfaenger =
+    spieler(ziel);
+
+  empfaenger.post.push({
+    von: username,
+    text:
+      text ||
+      "📬 Eine Nachricht aus der Fuchswelt"
+  });
+
+  return (
+    `📬 @${username} Nachricht an ` +
+    `@${ziel} zugestellt.`
+  );
+}
+
+
+/* =========================================================
+   🔄 TAUSCHPLATZ
+========================================================= */
+
+function tausch(
+  username,
+  ziel
+) {
+
+  const w =
+    spieler(username);
+
+  w.tausch.push({
+    mit: ziel,
+    status: "offen"
+  });
+
+  return (
+    `🔄 @${username} hat einen Tauschplatz ` +
+    `mit @${ziel} eröffnet. ` +
+    `Storygebundene Gegenstände bleiben geschützt.`
+  );
+}
+
+
+/* =========================================================
+   🐾 BEGLEITER
+========================================================= */
+
+function neuerBegleiter() {
+
+  return {
+
+    name:
+      begleiterNamen[
+        zufall(
+          0,
+          begleiterNamen.length - 1
+        )
+      ] +
+      zufall(1, 99),
+
+    rarity:
+      begleiterRaritaeten[
+        zufall(
+          0,
+          begleiterRaritaeten.length - 1
+        )
+      ],
+
+    level:
+      "Neuling",
+
+    persoenlichkeit:
+      begleiterPersoenlichkeiten[
+        zufall(
+          0,
+          begleiterPersoenlichkeiten.length - 1
+        )
+      ]
+  };
+}
+
+function begleiterAnzeigen(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  if (
+    !w.begleiter.length
+  ) {
+
+    return (
+      `🐾 @${username} Du hast noch keinen ` +
+      `Begleiter. Starte ein Abenteuer mit !begleiterabenteuer.`
+    );
+  }
+
+  return (
+    `🐾 @${username} Begleiter: ` +
+    w.begleiter
+      .map(
+        b =>
+          `${b.name} (${b.rarity}, ${b.level}, ${b.persoenlichkeit})`
+      )
+      .join(" | ")
+  );
+}
+
+function begleiterInfo(
+  username,
+  name
+) {
+
+  const w =
+    spieler(username);
+
+  const b =
+    w.begleiter.find(
+      x =>
+        normalisieren(x.name) ===
+        normalisieren(name)
+    );
+
+  if (!b) {
+
+    return (
+      `🐾 @${username} Begleiter nicht gefunden.`
+    );
+  }
+
+  return (
+    `🐾 ${b.name}: ` +
+    `${b.rarity} | ` +
+    `Persönlichkeit: ${b.persoenlichkeit} | ` +
+    `Stufe: ${b.level}`
+  );
+}
+
+function begleiterWahl(
+  username,
+  name
+) {
+
+  const w =
+    spieler(username);
+
+  const b =
+    w.begleiter.find(
+      x =>
+        normalisieren(x.name) ===
+        normalisieren(name)
+    );
+
+  if (!b) {
+
+    return (
+      `🐾 @${username} Begleiter nicht gefunden.`
+    );
+  }
+
+  const max =
+    w.stufe >= 5
+      ? 3
+      : w.stufe >= 3
+        ? 2
+        : 1;
+
+  if (
+    w.aktiveBegleiter.length >= max &&
+    !w.aktiveBegleiter.includes(b.name)
+  ) {
+
+    return (
+      `🐾 @${username} Dein Fuchsbau erlaubt ` +
+      `aktuell ${max} aktive Begleiter.`
+    );
+  }
+
+  if (
+    !w.aktiveBegleiter.includes(
+      b.name
+    )
+  ) {
+
+    w.aktiveBegleiter.push(
+      b.name
+    );
+  }
+
+  return (
+    `🐾 @${username} ${b.name} ist jetzt aktiv.`
+  );
+}
+
+function begleiterFuettern(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  if (
+    !w.begleiter.length
+  ) {
+
+    return (
+      `🐾 @${username} Du hast noch keinen Begleiter.`
+    );
+  }
+
+  w.freundschaft++;
+  w.ruf++;
+
+  return (
+    `❤️ @${username} Deine Begleiter freuen ` +
+    `sich über das Leckerli! Freundschaft +1.`
+  );
+}
+
+function begleiterFaehigkeit(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  if (
+    !w.aktiveBegleiter.length
+  ) {
+
+    return (
+      `🐾 @${username} Aktiviere zuerst ` +
+      `einen Begleiter mit !begleiterwahl [Name].`
+    );
+  }
+
+  w.ruf++;
+
+  return (
+    `✨ @${username} Dein Begleiter setzt ` +
+    `seine Spezialfähigkeit ein! +1 Ruf.`
+  );
+}
+
+
+/* =========================================================
+   🗺️ ABENTEUER
+========================================================= */
+
+async function abenteuer(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  if (
+    w.energie < 10
+  ) {
+
+    return (
+      `⚡ @${username} Du brauchst mindestens ` +
+      `10 Energie.`
+    );
+  }
+
+  w.energie -= 10;
+
+  const coins =
+    zufall(10, 60);
+
+  const xp =
+    zufall(10, 50);
+
+  const funde = [
+    "🍃 seltsame Blätter",
+    "🪨 einen alten Stein",
+    "🗝️ einen kleinen Schlüssel",
+    "💎 einen glitzernden Kristall",
+    "📜 eine alte Karte"
+  ];
+
+  const fund =
+    funde[
+      zufall(
+        0,
+        funde.length - 1
+      )
+    ];
+
+  w.muenzen += coins;
+  w.ruf++;
+
+  inventarHinzufuegen(
+    w,
+    fund
+  );
+
+  if (
+    !w.entdeckungen.includes(fund)
+  ) {
+
+    w.entdeckungen.push(
+      fund
+    );
+  }
+
+  if (
+    w.storyIndex < story.length
+  ) {
+
+    w.storyIndex++;
+  }
+
+  await xpHinzufuegen(
+    username,
+    xp
+  );
+
+  chronikEintrag(
+    w,
+    "Abenteuer gestartet"
+  );
+
+  let extra = "";
+
+  if (
+    tageszeit().includes("Nacht") &&
+    zufall(1, 4) === 1
+  ) {
+
+    extra =
+      " 🌑 Der Schattenfuchs wurde gesehen!";
+  }
+
+  if (
+    w.storyIndex >=
+    story.length - 1
+  ) {
+
+    extra +=
+      " 🚪 Die Spur endet an einer verschlossenen Unterwassertür.";
+  }
+
+  return (
+    `🗺️ @${username} Abenteuer beendet: ` +
+    `${fund} • +${coins}🪙 • +${xp} XP • ` +
+    `⚡ -10${extra}`
+  );
+}
+
+
+/* =========================================================
+   🗺️ WELTKARTE
+========================================================= */
+
+function karte() {
+
+  return (
+    `🗺️ Fuchs-Weltkarte: ` +
+    `🏡 Fuchsdorf | ` +
+    `🌋 Feuertal | ` +
+    `🌊 Wasserlande | ` +
+    `🌲 Fuchswald | ` +
+    `❄️ Eisberge | ` +
+    `🌌 Verborgene Tal | ` +
+    `🚪 verschlossene Unterwassertür`
+  );
+}
+
+
+/* =========================================================
+   👹 WESEN
+========================================================= */
+
+function wesenAnzeigen() {
+
+  return (
+    `👹 Wesen der Fuchswelt: ` +
+    wesen.join(" | ") +
+    ` | 🌑 Schattenfuchs erscheint nur nachts.`
+  );
+}
+
+
+/* =========================================================
+   🌦️ WETTER
+========================================================= */
+
+function wetterAnzeigen() {
+
+  return (
+    `🌦️ ${jahreszeit()} • ` +
+    `${tageszeit()} • ` +
+    `${wetter()}`
+  );
+}
+
+
+/* =========================================================
+   🔎 GEHEIMNIS
+========================================================= */
+
+function geheimnis(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  if (
+    w.storyIndex < 8
+  ) {
+
+    return (
+      `🔎 @${username} Im Geheimnisarchiv ` +
+      `liegt noch vieles verborgen. ` +
+      `Dein nächster Hinweis wartet in den Abenteuern.`
+    );
+  }
+
+  return (
+    `🔎 @${username} Die Spur führt weiter: ` +
+    `🌳 → 🌙 → 💧 → 🚪`
+  );
+}
+
+
+/* =========================================================
+   🗿 FUCHSSTATUR
+========================================================= */
+
+function fuchsstatur(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  const start =
+    9;
+
+  const ende =
+    Math.min(
+      story.length,
+      start + Math.max(
+        1,
+        w.storyIndex
+      )
+    );
+
+  const texte =
+    story.slice(
+      start,
+      ende
+    );
+
+  if (!texte.length) {
+
+    return (
+      `🗿 @${username} Ihr seid gekommen … ` +
+      `so, wie der Urfuchs es vorausgesehen hat.`
+    );
+  }
+
+  return (
+    `🗿 @${username} Fuchsstatur: ` +
+    texte.join(" | ")
+  );
+}
+
+
+/* =========================================================
+   🌙 TOR DER FÜNF KRÄFTE
+========================================================= */
+
+function torDerFuenfKraefte(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  if (
+    w.storyIndex < 8
+  ) {
+
+    return (
+      `🌙 @${username} Das Tor der fünf Kräfte ` +
+      `ist noch verschlossen. Suche weiter nach den vier Kräften.`
+    );
+  }
+
+  w.tor =
+    true;
+
+  return (
+    `🌙 @${username} Das Tor der fünf Kräfte reagiert! ` +
+    `Vier bekannte Kräfte und ein unbekannter fünfter Platz leuchten.`
+  );
+}
+
+
+/* =========================================================
+   🌟 SCHICKSAL
+========================================================= */
+
+function schicksalAnzeigen(
+  username,
+  name
+) {
+
+  const w =
+    spieler(username);
+
+  if (name) {
+
+    const pfad =
+      schicksal.find(
+        x =>
+          normalisieren(x)
+            .includes(
+              normalisieren(name)
+            )
+      );
+
+    if (
+      pfad &&
+      !w.schicksal.includes(pfad)
+    ) {
+
+      w.schicksal.push(
+        pfad
+      );
+
+      chronikEintrag(
+        w,
+        `Schicksalspfad gewählt: ${pfad}`
+      );
+    }
+  }
+
+  return (
+    `🌟 @${username} Deine Fuchs-Schicksalspfade: ` +
+    `${
+      w.schicksal.length
+        ? w.schicksal.join(" • ")
+        : "Noch keine gewählt"
+    }`
+  );
+}
+
+
+/* =========================================================
+   🏅 ERFOLGE
+========================================================= */
+
+function erfolgeAnzeigen(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  return (
+    `🏅 @${username} Fuchs-Erfolge: ` +
+    `${
+      w.erfolge.length
+        ? w.erfolge.join(" • ")
+        : "Noch keine"
+    }`
+  );
+}
+
+
+/* =========================================================
+   📖 CHRONIK
+========================================================= */
+
+function chronikAnzeigen(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  return (
+    `📖 @${username} Fuchs-Chronik: ` +
+    `${
+      w.chronik.length
+        ? w.chronik.slice(0, 5).join(" | ")
+        : "Noch leer"
+    }`
+  );
+}
+
+
+/* =========================================================
+   📚 ARCHIV
+========================================================= */
+
+function archivAnzeigen() {
+
+  return (
+    `📚 Fuchs-Archiv: ` +
+    `Hier wird die gemeinsame Geschichte ` +
+    `von MitsusundWandasWelt gesammelt. ` +
+    `Unbekannte Dinge erscheinen als ❓.`
+  );
+}
+
+
+/* =========================================================
+   📖 ENTDECKUNGSBUCH
+========================================================= */
+
+function entdeckungenAnzeigen(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  return (
+    `📖 @${username} Fuchs-Entdeckungsbuch: ` +
+    `${
+      w.entdeckungen.length
+        ? w.entdeckungen.join(" • ")
+        : "❓ Noch keine Entdeckungen"
+    }`
+  );
+}
+
+
+/* =========================================================
+   ⭐ FUCHS-RUF
+========================================================= */
+
+function rufAnzeigen(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  return (
+    `⭐ @${username} Dein Fuchs-Ruf beträgt ` +
+    `${w.ruf}.`
+  );
+}
+
+
+/* =========================================================
+   🏆 RUHMESHALLE
+========================================================= */
+
+function ruhmeshalle(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  return (
+    `🏆 @${username} Fuchs-Ruhmeshalle: ` +
+    `${
+      w.ruhmeshalle.length
+        ? w.ruhmeshalle.join(" • ")
+        : "Noch keine besonderen historischen Momente."
+    }`
+  );
+}
+
+
+/* =========================================================
+   ⭐ LEGENDEN
+========================================================= */
+
+function legenden(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  return (
+    `⭐ @${username} Fuchs-Legenden: ` +
+    `${
+      w.legenden.length
+        ? w.legenden.join(" • ")
+        : "Noch keine Legenden."
+    }`
+  );
+}
+
+
+/* =========================================================
+   ❤️ FUCHSKERN
+========================================================= */
+
+function fuchskern(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  w.fuchskern++;
+
+  return (
+    `❤️ @${username} Dein Fuchskern leuchtet! ` +
+    `Fuchskern-Stufe ${w.fuchskern}.`
+  );
+}
+
+
+/* =========================================================
+   🎉 EVENTS
+========================================================= */
+
+function event() {
+
+  const events = [
+    "🌋 Feuertal-Eruption",
+    "❄️ Eissturm",
+    "👹 Wesen-Event",
+    "🌙 Urfuchs-Nacht",
+    "🎉 Fuchsdorf-Festival"
+  ];
+
+  return (
+    `🎉 Aktuelles Fuchs-Event: ` +
+    events[
+      zufall(
+        0,
+        events.length - 1
+      )
+    ] +
+    `! Mit !eventmitmachen kannst du teilnehmen.`
+  );
+}
+
+function eventMitmachen(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  const coins =
+    zufall(20, 80);
+
+  w.muenzen +=
+    coins;
+
+  w.ruf += 2;
+
+  return (
+    `🎉 @${username} Du bist beim Event dabei! ` +
+    `+${coins}🪙 und +2 Ruf.`
+  );
+}
+
+function eventStatus(
+  username
+) {
+
+  const w =
+    spieler(username);
+
+  return (
+    `🎉 @${username} Eventstatus: ` +
+    `aktiv • Ruf ${w.ruf} • Energie ${w.energie}`
+  );
+}
+
+
+/* =========================================================
+   🤝 TEAMS
+========================================================= */
+
+const teams =
+  new Map();
+
+function teamAnzeigen(
+  username
+) {
+
+  const u =
+    normalisieren(username);
+
+  const meineTeams =
+    [...teams.values()]
+      .filter(
+        t =>
+          t.members.includes(u)
+      );
+
+  return (
+    `🤝 @${username} Fuchs-Teams: ` +
+    `${
+      meineTeams.length
+        ? meineTeams
+            .map(t => t.name)
+            .join(", ")
+        : "Du bist noch in keinem Team."
+    }`
+  );
+}
+
+function teamGruenden(
+  username,
+  name
+) {
+
+  const teamName =
+    String(name || "")
+      .trim()
+      .slice(0, 30);
+
+  if (!teamName) {
+
+    return (
+      `🤝 @${username} Nutze ` +
+      `!teamgründen [Name].`
+    );
+  }
+
+  if (
+    teams.has(
+      normalisieren(teamName)
+    )
+  ) {
+
+    return (
+      `🤝 @${username} Dieses Team gibt es schon.`
+    );
+  }
+
+  teams.set(
+    normalisieren(teamName),
+    {
+      name: teamName,
+      leader:
+        normalisieren(username),
+      members: [
+        normalisieren(username)
+      ],
+      aufgaben: 0,
+      treasury: 0
+    }
+  );
+
+  spieler(username).teams.push(
+    teamName
+  );
+
+  return (
+    `🤝 Team „${teamName}“ wurde gegründet! ` +
+    `@${username} ist Teamleiter.`
+  );
+}
+
+function teamEinladen(
+  username,
+  ziel
+) {
+
+  const team =
+    [...teams.values()]
+      .find(
+        t =>
+          t.members.includes(
+            normalisieren(username)
+          )
+      );
+
+  if (!team) {
+
+    return (
+      `🤝 @${username} Du bist in keinem Team.`
+    );
+  }
+
+  return (
+    `🤝 @${username} @${ziel} wurde ` +
+    `für Team „${team.name}“ eingeladen.`
+  );
+}
+
+function teamBeitreten(
+  username,
+  name
+) {
+
+  const team =
+    teams.get(
+      normalisieren(name)
+    );
+
+  if (!team) {
+
+    return (
+      `🤝 @${username} Team nicht gefunden.`
+    );
+  }
+
+  const u =
+    normalisieren(username);
+
+  if (
+    !team.members.includes(u)
+  ) {
+
+    team.members.push(u);
+  }
+
+  if (
+    !spieler(username).teams.includes(
+      team.name
+    )
+  ) {
+
+    spieler(username).teams.push(
+      team.name
+    );
+  }
+
+  return (
+    `🤝 @${username} ist Team „${team.name}“ beigetreten!`
+  );
+}
+
+function teamVerlassen(
+  username
+) {
+
+  const team =
+    [...teams.values()]
+      .find(
+        t =>
+          t.members.includes(
+            normalisieren(username)
+          )
+      );
+
+  if (!team) {
+
+    return (
+      `🤝 @${username} Du bist in keinem Team.`
+    );
+  }
+
+  team.members =
+    team.members.filter(
+      x =>
+        x !== normalisieren(username)
+    );
+
+  return (
+    `🤝 @${username} hat Team ` +
+    `„${team.name}“ verlassen.`
+  );
+}
+
+function teamAufgaben(
+  username
+) {
+
+  const team =
+    [...teams.values()]
+      .find(
+        t =>
+          t.members.includes(
+            normalisieren(username)
+          )
+      );
+
+  if (!team) {
+
+    return (
+      `🤝 @${username} Du bist in keinem Team.`
+    );
+  }
+
+  team.aufgaben++;
+
+  return (
+    `🤝 Team „${team.name}“: ` +
+    `Aufgabe ${team.aufgaben} abgeschlossen.`
+  );
+}
+
+
+/* =========================================================
+   ⚔️ PVP
+========================================================= */
+
+const pvpPending =
+  new Map();
+
+let aktuellerPvpKampf =
+  null;
 
 async function pvpStart(
   username,
-  gegner
+  ziel
 ) {
 
-  const angreifer =
-    normalisieren(
-      username
-    );
-
-  const verteidiger =
-    normalisieren(
-      gegner
-    );
-
-
-  if (
-    !verteidiger ||
-    angreifer === verteidiger
-  ) {
-
-    return (
-      `@${username} ❌ Ungültiger Gegner.`
-    );
-  }
-
-
   const a =
-    await profilAnlegen(
-      angreifer
-    );
+    normalisieren(username);
 
-  const v =
-    await profilAnlegen(
-      verteidiger
-    );
-
-
-  const kampf = {
-
-    angreifer,
-
-    verteidiger,
-
-    typ:
-      "rudel",
-
-    angreiferRudel:
-      a.rudel || "",
-
-    verteidigerRudel:
-      v.rudel || "",
-
-    angreiferPokemon:
-      eigenePokemon[angreifer] ||
-      a.pokemon ||
-      "",
-
-    verteidigerPokemon:
-      eigenePokemon[verteidiger] ||
-      v.pokemon ||
-      "",
-  };
-
-
-  offeneKaempfe.set(
-    verteidiger,
-    kampf
-  );
-
+  const b =
+    normalisieren(ziel);
 
   if (
-    angreifer ===
-    "fuchsmissvegetalover2_0" ||
-
-    verteidiger ===
-    "fuchsmissvegetalover2_0"
-  ) {
-
-    return kampfAnnehmen(
-      verteidiger
-    );
-  }
-
-
-  return (
-    `⚔️ @${angreifer} fordert @${verteidiger} heraus! ` +
-    `@${verteidiger} schreibe !annehmen`
-  );
-}
-
-
-/* =====================================================
-   POKÉMON KAMPF
-===================================================== */
-
-async function pokemonKampfStart(
-  username,
-  gegner
-) {
-
-  const angreifer =
-    normalisieren(
-      username
-    );
-
-  const verteidiger =
-    normalisieren(
-      gegner
-    );
-
-
-  if (
-    !verteidiger ||
-    angreifer === verteidiger
+    a === b
   ) {
 
     return (
-      `@${username} ❌ Ungültiger Gegner.`
+      `🦊 @${username} Du kannst dich ` +
+      `nicht selbst herausfordern.`
     );
   }
 
-
-  const a =
-    await profilAnlegen(
-      angreifer
-    );
-
-  const v =
-    await profilAnlegen(
-      verteidiger
-    );
-
-
-  const pokemonA =
-    eigenePokemon[angreifer] ||
-    a.pokemon;
-
-  const pokemonV =
-    eigenePokemon[verteidiger] ||
-    v.pokemon;
-
-
-  if (!pokemonA) {
-
-    return (
-      `@${username} ❌ Du hast noch kein Pokémon.`
-    );
-  }
-
-
-  if (!pokemonV) {
-
-    return (
-      `@${username} ❌ Der Gegner hat noch kein Pokémon.`
-    );
-  }
-
-
-  offeneKaempfe.set(
-    verteidiger,
+  pvpPending.set(
+    b,
     {
-
-      angreifer,
-
-      verteidiger,
-
-      typ:
-        "pokemon",
-
-      angreiferRudel:
-        a.rudel || "",
-
-      verteidigerRudel:
-        v.rudel || "",
-
-      angreiferPokemon:
-        pokemonA,
-
-      verteidigerPokemon:
-        pokemonV,
+      von: a,
+      typ: "fuchs"
     }
   );
 
-
   if (
-    angreifer ===
-    "fuchsmissvegetalover2_0" ||
-
-    verteidiger ===
+    b ===
     "fuchsmissvegetalover2_0"
   ) {
 
     return kampfAnnehmen(
-      verteidiger
+      b
     );
   }
 
-
   return (
-    `⚡ @${angreifer} fordert @${verteidiger} ` +
-    `zum Pokémon-Kampf heraus! ` +
-    `@${verteidiger} schreibe !annehmen`
+    `⚔️ @${username} fordert @${ziel} ` +
+    `zum Fuchsduell heraus! @${ziel} nutze !annehmen.`
   );
 }
-
-
-/* =====================================================
-   KAMPF ANNEHMEN
-===================================================== */
 
 async function kampfAnnehmen(
   username
 ) {
 
-  const user =
-    normalisieren(
-      username
-    );
+  const u =
+    normalisieren(username);
 
+  const pending =
+    pvpPending.get(u);
 
-  const kampf =
-    offeneKaempfe.get(
-      user
-    );
-
-
-  if (!kampf) {
+  if (!pending) {
 
     return (
-      `@${username} ❌ Es gibt keine offene Herausforderung.`
+      `⚔️ @${username} Es wartet keine ` +
+      `Herausforderung auf dich.`
     );
   }
 
+  pvpPending.delete(u);
 
-  offeneKaempfe.delete(
-    user
-  );
+  const angreifer =
+    pending.von;
 
+  const verteidiger =
+    u;
 
   const gewinner =
     Math.random() < 0.5
-      ? kampf.angreifer
-      : kampf.verteidiger;
+      ? angreifer
+      : verteidiger;
 
+  const wa =
+    spieler(angreifer);
 
-  const verlierer =
-    gewinner ===
-    kampf.angreifer
-      ? kampf.verteidiger
-      : kampf.angreifer;
+  const wb =
+    spieler(verteidiger);
 
+  await xpHinzufuegen(
+    gewinner,
+    100
+  );
+
+  spieler(gewinner).muenzen += 50;
+
+  spieler(gewinner).ruf += 2;
 
   aktuellerPvpKampf = {
 
-    ...kampf,
+    typ: "fuchs",
+
+    angreifer,
+
+    verteidiger,
 
     gewinner,
+
+    angreiferRudel:
+      wa.rudel || "",
+
+    verteidigerRudel:
+      wb.rudel || "",
+
+    zeit:
+      Date.now()
   };
 
+  chronikEintrag(
+    wa,
+    `Fuchsduell gegen ${verteidiger}`
+  );
 
-  try {
-
-    await xpHinzufuegen(
-      gewinner,
-      100
-    );
-
-
-    const winnerProfil =
-      await profilHolen(
-        gewinner
-      );
-
-
-    const loserProfil =
-      await profilHolen(
-        verlierer
-      );
-
-
-    await supabase(
-      `/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
-        gewinner
-      )}`,
-      {
-        method: "PATCH",
-
-        body:
-          JSON.stringify({
-            pvp_siege:
-              Number(
-                winnerProfil?.pvp_siege ||
-                0
-              ) + 1,
-          }),
-      }
-    );
-
-
-    await supabase(
-      `/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
-        verlierer
-      )}`,
-      {
-        method: "PATCH",
-
-        body:
-          JSON.stringify({
-            pvp_niederlagen:
-              Number(
-                loserProfil?.pvp_niederlagen ||
-                0
-              ) + 1,
-          }),
-      }
-    );
-
-  } catch (error) {
-
-    console.error(
-      "❌ Kampf DB:",
-      error.message
-    );
-  }
-
-
-  if (
-    kampf.typ ===
-    "pokemon"
-  ) {
-
-    return (
-      `⚡ POKÉMON-KAMPF! ` +
-      `@${kampf.angreifer} ${kampf.angreiferPokemon} ⚔️ ` +
-      `@${kampf.verteidiger} ${kampf.verteidigerPokemon} ` +
-      `→ 🏆 @${gewinner} gewinnt +100 XP!`
-    );
-  }
-
+  chronikEintrag(
+    wb,
+    `Fuchsduell gegen ${angreifer}`
+  );
 
   return (
-    `⚔️ RUDEL-KAMPF! ` +
-    `@${kampf.angreifer} ` +
-    `[${kampf.angreiferRudel || "kein Rudel"}] ⚔️ ` +
-    `@${kampf.verteidiger} ` +
-    `[${kampf.verteidigerRudel || "kein Rudel"}] ` +
-    `→ 🏆 @${gewinner} gewinnt +100 XP!`
+    `🏆 Fuchsduell! @${gewinner} gewinnt ` +
+    `+100 XP +50🪙!`
   );
 }
 
 
-/* =====================================================
-   ALLE BEFEHLE
-===================================================== */
+/* =========================================================
+   ⚡ POKÉMON-KAMPF
+========================================================= */
 
-async function alleBefehle(
-  username
+async function pokemonKampf(
+  username,
+  ziel
 ) {
 
+  const a =
+    normalisieren(username);
+
+  const b =
+    normalisieren(ziel);
+
+  const pa =
+    eigenePokemon[a] ||
+    spieler(a).pokemon ||
+    pokemonListe[
+      zufall(
+        0,
+        pokemonListe.length - 1
+      )
+    ];
+
+  const pb =
+    eigenePokemon[b] ||
+    spieler(b).pokemon ||
+    pokemonListe[
+      zufall(
+        0,
+        pokemonListe.length - 1
+      )
+    ];
+
+  const gewinner =
+    Math.random() < 0.5
+      ? a
+      : b;
+
+  await xpHinzufuegen(
+    gewinner,
+    100
+  );
+
+  spieler(gewinner).muenzen += 50;
+
+  aktuellerPvpKampf = {
+
+    typ: "pokemon",
+
+    angreifer: a,
+
+    verteidiger: b,
+
+    gewinner,
+
+    angreiferPokemon: pa,
+
+    verteidigerPokemon: pb,
+
+    zeit:
+      Date.now()
+  };
+
   return (
-    `@${username} 🦊 Befehle: ` +
-    `!xp | ` +
-    `!profil | ` +
-    `!quest | ` +
-    `!antwort [Antwort] | ` +
-    `!rudelwahl Feuer/Wasser/Wald/ICE | ` +
-    `!pokemon | ` +
-    `!pokemon Name | ` +
-    `!pvp @Name | ` +
-    `!pokekampf @Name | ` +
-    `!annehmen | ` +
-    `!allebefehle`
+    `⚡ POKÉMON-KAMPF! ` +
+    `@${a} ${pa} ⚔️ @${b} ${pb} → ` +
+    `🏆 @${gewinner} gewinnt +100 XP +50🪙!`
   );
 }
 
 
-/* =====================================================
-   CHAT VERARBEITEN
-===================================================== */
+/* =========================================================
+   🐾 POKÉMON WÄHLEN
+========================================================= */
+
+function pokemonWahl(
+  username,
+  name
+) {
+
+  const w =
+    spieler(username);
+
+  if (!name) {
+
+    return (
+      `🐾 @${username} Dein Pokémon ist ` +
+      `${eigenePokemon[
+        normalisieren(username)
+      ] || w.pokemon || "noch nicht gewählt"}.`
+    );
+  }
+
+  const pokemon =
+    pokemonListe.find(
+      x =>
+        normalisieren(x) ===
+        normalisieren(name)
+    );
+
+  if (!pokemon) {
+
+    return (
+      `🐾 @${username} Pokémon nicht gefunden. ` +
+      `Beispiele: ${pokemonListe.slice(0, 6).join(", ")}.`
+    );
+  }
+
+  w.pokemon =
+    pokemon;
+
+  return (
+    `🐾 @${username} Dein Pokémon ist jetzt ` +
+    `${pokemon}!`
+  );
+}
+
+
+/* =========================================================
+   🐾 RUDELWAHL
+========================================================= */
+
+function rudelWahl(
+  username,
+  name
+) {
+
+  const w =
+    spieler(username);
+
+  const such =
+    normalisieren(name);
+
+  const schluessel =
+    Object.keys(rudel)
+      .find(
+        x =>
+          such.includes(x)
+      );
+
+  if (!schluessel) {
+
+    return (
+      `🦊 @${username} Wähle: ` +
+      `feuer, wasser, wald oder ice.`
+    );
+  }
+
+  w.rudel =
+    rudel[schluessel];
+
+  chronikEintrag(
+    w,
+    `Rudel gewählt: ${rudel[schluessel]}`
+  );
+
+  return (
+    `🌟 @${username} Du bist jetzt im ` +
+    `${rudel[schluessel]}! ` +
+    `Dein Gebiet: ${gebiete[schluessel]}.`
+  );
+}
+
+
+/* =========================================================
+   🧭 HILFE
+========================================================= */
+
+function hilfe() {
+
+  return (
+    `🦊 MitsusundWandasWelt: ` +
+    `!profil !xp !quest !antwort ` +
+    `!dorf !bau !fuchsname !bauname ` +
+    `!markt !kaufen !inventar !bank ` +
+    `!schenken !post !tausch ` +
+    `!begleiter !begleiterinfo !begleiterwahl ` +
+    `!begleiterfüttern !begleiterabenteuer ` +
+    `!begleiterfähigkeit !abenteuer !karte ` +
+    `!entdeckungen !wesen !geheimnis !fuchsstatur ` +
+    `!wetter !tor !erfolge !chronik !archiv ` +
+    `!schicksal !rudel !rudelwahl !pokemon ` +
+    `!pokekampf !pvp !annehmen ` +
+    `!team !teamgründen !teameinladen ` +
+    `!teambeitreten !teamverlassen !teamaufgaben ` +
+    `!event !eventmitmachen !eventstatus ` +
+    `!ruhmeshalle !legenden !fuchskern`
+  );
+}
+
+
+/* =========================================================
+   💬 CHAT VERARBEITEN
+========================================================= */
 
 async function chatVerarbeiten(
   message
 ) {
 
   if (
-    message.type !==
-    "message"
+    message.type !== "message"
   ) {
     return;
   }
-
 
   if (
     message.topic !==
@@ -1859,10 +2992,8 @@ async function chatVerarbeiten(
     return;
   }
 
-
   const data =
     message.data || {};
-
 
   const usernameRaw =
     data?.chatter_user_name ||
@@ -1872,17 +3003,14 @@ async function chatVerarbeiten(
     data?.username ||
     data?.user?.name;
 
-
   if (!usernameRaw) {
     return;
   }
-
 
   const username =
     normalisieren(
       usernameRaw
     );
-
 
   if (
     username ===
@@ -1891,317 +3019,1096 @@ async function chatVerarbeiten(
     return;
   }
 
-
   const text =
-    String(
-      data?.message?.text ||
-      data?.text ||
-      ""
-    ).trim();
+    data?.message?.text ||
+    data?.text ||
+    "";
 
-
-  if (!text) {
+  if (
+    !text.trim()
+  ) {
     return;
   }
-
 
   console.log(
     `💬 ${username}: ${text}`
   );
 
+  await aktivitaetSpeichern(
+    username
+  );
 
-  /* =================================================
-     !XP
-  ================================================= */
+  const w =
+    spieler(username);
 
-  if (
-    /^!xp$/i.test(
-      text
-    )
-  ) {
+  w.messageCount++;
 
-    await streamelementsSenden(
-      await xpAnzeigen(
-        username
+  try {
+
+    let match;
+    let antwort = null;
+
+
+    /* !XP */
+
+    if (
+      /^!xp$/i.test(text.trim())
+    ) {
+
+      const p =
+        await profilDB(username);
+
+      const xp =
+        Number(p?.xp || 0);
+
+      antwort =
+        `🦊 @${username} Du hast ${xp} XP ` +
+        `und bist Level ${levelAusXP(xp)}!`;
+    }
+
+
+    /* !QUEST */
+
+    else if (
+      /^!quest$/i.test(
+        text.trim()
       )
-    );
+    ) {
 
-    return;
-  }
+      antwort =
+        questAnzeigen(username);
+    }
 
 
-  /* =================================================
-     !PROFIL
-  ================================================= */
+    /* !ANTWORT */
 
-  if (
-    /^!profil$/i.test(
-      text
-    )
-  ) {
+    else if (
+      /^!antwort\s+/i.test(text)
+    ) {
 
-    await streamelementsSenden(
-      await profil(
-        username
+      antwort =
+        await questAntwort(
+          username,
+          text.replace(
+            /^!antwort\s+/i,
+            ""
+          )
+        );
+    }
+
+
+    /* !PROFIL */
+
+    else if (
+      /^!profil$/i.test(
+        text.trim()
       )
-    );
+    ) {
 
-    return;
-  }
+      antwort =
+        await profil(username);
+    }
 
 
-  /* =================================================
-     !QUEST
-  ================================================= */
+    /* !HILFE */
 
-  if (
-    /^!quest$/i.test(
-      text
-    )
-  ) {
-
-    await streamelementsSenden(
-      await persoenlicheQuestAnzeigen(
-        username
+    else if (
+      /^!hilfe$/i.test(
+        text.trim()
+      ) ||
+      /^!allebefehle$/i.test(
+        text.trim()
       )
-    );
+    ) {
 
-    return;
-  }
-
-
-  /* =================================================
-     !ANTWORT
-  ================================================= */
-
-  let match =
-    text.match(
-      /^!antwort\s+(.+)$/i
-    );
+      antwort =
+        hilfe();
+    }
 
 
-  if (match) {
+    /* !DORF */
 
-    await streamelementsSenden(
-      await persoenlicheQuestAntwort(
-        username,
-        match[1]
+    else if (
+      /^!dorf$/i.test(
+        text.trim()
       )
-    );
+    ) {
 
-    return;
-  }
+      antwort =
+        dorf(username);
+    }
 
 
-  /* =================================================
-     !ALLEBEFEHLE
-  ================================================= */
+    /* !BAU */
 
-  if (
-    /^!allebefehle$/i.test(
-      text
-    )
-  ) {
+    else if (
+      /^!bau(?:\s+(.+))?$/i.test(text)
+    ) {
 
-    await streamelementsSenden(
-      await alleBefehle(
-        username
+      match =
+        text.match(
+          /^!bau(?:\s+(.+))?$/i
+        );
+
+      const ziel =
+        match?.[1];
+
+      antwort =
+        bau(
+          ziel || username
+        );
+    }
+
+
+    /* !FUCHSNAME */
+
+    else if (
+      /^!fuchsname\s+(.+)$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!fuchsname\s+(.+)$/i
+        );
+
+      antwort =
+        fuchsname(
+          username,
+          match[1]
+        );
+    }
+
+
+    /* !BAUNAME */
+
+    else if (
+      /^!bauname\s+(.+)$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!bauname\s+(.+)$/i
+        );
+
+      antwort =
+        bauname(
+          username,
+          match[1]
+        );
+    }
+
+
+    /* !MARKT */
+
+    else if (
+      /^!markt$/i.test(
+        text.trim()
       )
-    );
+    ) {
 
-    return;
-  }
-
-
-  /* =================================================
-     !RUDELWAHL
-  ================================================= */
-
-  match =
-    text.match(
-      /^!rudelwahl\s+(.+)$/i
-    );
+      antwort =
+        marktAnzeigen();
+    }
 
 
-  if (match) {
+    /* !KAUFEN */
 
-    await streamelementsSenden(
-      await rudelwahl(
-        username,
-        match[1]
+    else if (
+      /^!kaufen\s+(.+)$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!kaufen\s+(.+)$/i
+        );
+
+      antwort =
+        await kaufen(
+          username,
+          match[1]
+        );
+    }
+
+
+    /* !INVENTAR */
+
+    else if (
+      /^!inventar$/i.test(
+        text.trim()
       )
-    );
+    ) {
 
-    return;
-  }
-
-
-  /* =================================================
-     !POKEMON
-  ================================================= */
-
-  match =
-    text.match(
-      /^!pokemon(?:\s+(.+))?$/i
-    );
+      antwort =
+        inventar(username);
+    }
 
 
-  if (match) {
+    /* !BANK */
 
-    await streamelementsSenden(
-      await pokemonWahl(
-        username,
-        match[1]
+    else if (
+      /^!bank(?:\s+(einzahlen|abheben|zins)\s*(\d+)?)?$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!bank(?:\s+(einzahlen|abheben|zins)\s*(\d+)?)?$/i
+        );
+
+      antwort =
+        match?.[1]
+          ? bankAktion(
+              username,
+              match[1].toLowerCase(),
+              match[2]
+            )
+          : bank(username);
+    }
+
+
+    /* !SCHENKEN */
+
+    else if (
+      /^!schenken\s+@?\w+\s+\d+$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!schenken\s+@?([\w]+)\s+(\d+)$/i
+        );
+
+      antwort =
+        schenken(
+          username,
+          match[1],
+          match[2]
+        );
+    }
+
+
+    /* !POST */
+
+    else if (
+      /^!post\s+@?\w+(?:\s+.*)?$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!post\s+@?([\w]+)(?:\s+(.+))?$/i
+        );
+
+      antwort =
+        post(
+          username,
+          match[1],
+          match[2]
+        );
+    }
+
+
+    /* !TAUSCH */
+
+    else if (
+      /^!tausch\s+@?\w+$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!tausch\s+@?([\w]+)$/i
+        );
+
+      antwort =
+        tausch(
+          username,
+          match[1]
+        );
+    }
+
+
+    /* !BEGLEITER */
+
+    else if (
+      /^!begleiter$/i.test(
+        text.trim()
       )
-    );
+    ) {
 
-    return;
-  }
-
-
-  /* =================================================
-     !PVP
-  ================================================= */
-
-  match =
-    text.match(
-      /^!pvp\s+@?([a-zA-Z0-9_]+)$/i
-    );
+      antwort =
+        begleiterAnzeigen(
+          username
+        );
+    }
 
 
-  if (match) {
+    /* !BEGLEITERINFO */
 
-    try {
+    else if (
+      /^!begleiterinfo\s+(.+)$/i.test(text)
+    ) {
 
-      const antwort =
+      match =
+        text.match(
+          /^!begleiterinfo\s+(.+)$/i
+        );
+
+      antwort =
+        begleiterInfo(
+          username,
+          match[1]
+        );
+    }
+
+
+    /* !BEGLEITERWAHL */
+
+    else if (
+      /^!begleiterwahl\s+(.+)$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!begleiterwahl\s+(.+)$/i
+        );
+
+      antwort =
+        begleiterWahl(
+          username,
+          match[1]
+        );
+    }
+
+
+    /* !BEGLEITERFÜTTERN */
+
+    else if (
+      /^!begleiterfüttern$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        begleiterFuettern(
+          username
+        );
+    }
+
+
+    /* !BEGLEITERFÄHIGKEIT */
+
+    else if (
+      /^!begleiterfähigkeit$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        begleiterFaehigkeit(
+          username
+        );
+    }
+
+
+    /* !BEGLEITERABENTEUER */
+
+    else if (
+      /^!begleiterabenteuer$/i.test(
+        text.trim()
+      )
+    ) {
+
+      if (
+        !w.begleiter.length
+      ) {
+
+        w.begleiter.push(
+          neuerBegleiter()
+        );
+
+        chronikEintrag(
+          w,
+          `Erster Begleiter gefunden: ${w.begleiter[0].name}`
+        );
+
+        erfolgFreischalten(
+          w,
+          "Erster Gefährte"
+        );
+
+        titelAktualisieren(w);
+      }
+
+      antwort =
+        `🐾 @${username} Begleiter-Abenteuer: ` +
+        `${w.begleiter[0].name} hat eine neue Spur entdeckt!`;
+    }
+
+
+    /* !ABENTEUER */
+
+    else if (
+      /^!abenteuer$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        await abenteuer(
+          username
+        );
+    }
+
+
+    /* !KARTE */
+
+    else if (
+      /^!karte$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        karte();
+    }
+
+
+    /* !ENTDECKUNGEN */
+
+    else if (
+      /^!entdeckungen$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        entdeckungenAnzeigen(
+          username
+        );
+    }
+
+
+    /* !WESEN */
+
+    else if (
+      /^!wesen$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        wesenAnzeigen();
+    }
+
+
+    /* !GEHEIMNIS */
+
+    else if (
+      /^!geheimnis$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        geheimnis(
+          username
+        );
+    }
+
+
+    /* !FUCHSSTATUR */
+
+    else if (
+      /^!fuchsstatur$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        fuchsstatur(
+          username
+        );
+    }
+
+
+    /* !WETTER */
+
+    else if (
+      /^!wetter$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        wetterAnzeigen();
+    }
+
+
+    /* !TOR */
+
+    else if (
+      /^!tor$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        torDerFuenfKraefte(
+          username
+        );
+    }
+
+
+    /* !ERFOLGE */
+
+    else if (
+      /^!erfolge$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        erfolgeAnzeigen(
+          username
+        );
+    }
+
+
+    /* !CHRONIK */
+
+    else if (
+      /^!chronik$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        chronikAnzeigen(
+          username
+        );
+    }
+
+
+    /* !ARCHIV */
+
+    else if (
+      /^!archiv$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        archivAnzeigen();
+    }
+
+
+    /* !RUHMESHALLE */
+
+    else if (
+      /^!ruhmeshalle$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        ruhmeshalle(
+          username
+        );
+    }
+
+
+    /* !LEGENDEN */
+
+    else if (
+      /^!legenden$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        legenden(
+          username
+        );
+    }
+
+
+    /* !FUCHSKERN */
+
+    else if (
+      /^!fuchskern$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        fuchskern(
+          username
+        );
+    }
+
+
+    /* !RUF */
+
+    else if (
+      /^!ruf$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        rufAnzeigen(
+          username
+        );
+    }
+
+
+    /* !SCHICKSAL */
+
+    else if (
+      /^!schicksal(?:\s+(.+))?$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!schicksal(?:\s+(.+))?$/i
+        );
+
+      antwort =
+        schicksalAnzeigen(
+          username,
+          match?.[1]
+        );
+    }
+
+
+    /* !RUDEL */
+
+    else if (
+      /^!rudel$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        `🐾 @${username} ${
+          w.rudel ||
+          "Noch kein Rudel"
+        }`;
+    }
+
+
+    /* !RUDELWAHL */
+
+    else if (
+      /^!rudelwahl\s+(.+)$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!rudelwahl\s+(.+)$/i
+        );
+
+      antwort =
+        rudelWahl(
+          username,
+          match[1]
+        );
+    }
+
+
+    /* !POKEMON */
+
+    else if (
+      /^!pokemon(?:\s+(.+))?$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!pokemon(?:\s+(.+))?$/i
+        );
+
+      antwort =
+        pokemonWahl(
+          username,
+          match?.[1]
+        );
+    }
+
+
+    /* !POKEKAMPF */
+
+    else if (
+      /^!pokekampf\s+@?\w+$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!pokekampf\s+@?([\w]+)$/i
+        );
+
+      antwort =
+        await pokemonKampf(
+          username,
+          match[1]
+        );
+    }
+
+
+    /* !PVP */
+
+    else if (
+      /^!pvp\s+@?\w+$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!pvp\s+@?([\w]+)$/i
+        );
+
+      antwort =
         await pvpStart(
           username,
           match[1]
         );
-
-
-      if (antwort) {
-
-        await streamelementsSenden(
-          antwort
-        );
-      }
-
-    } catch (error) {
-
-      console.error(
-        "❌ !pvp:",
-        error.message
-      );
-
-
-      await streamelementsSenden(
-        `@${username} ❌ Der PvP-Kampf konnte nicht gestartet werden.`
-      );
     }
 
 
-    return;
-  }
+    /* !ANNEHMEN */
+
+    else if (
+      /^!annehmen$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        await kampfAnnehmen(
+          username
+        );
+    }
 
 
-  /* =================================================
-     !POKEKAMPF
-  ================================================= */
+    /* !KAMPF */
 
-  match =
-    text.match(
-      /^!pokekampf\s+@?([a-zA-Z0-9_]+)$/i
+    else if (
+      /^!kampf$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        `⚔️ @${username} Starte ein ` +
+        `Fuchsduell mit !pvp @Name.`;
+    }
+
+
+    /* !ANGRIFF */
+
+    else if (
+      /^!angriff$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        `⚔️ @${username} Angriff registriert!`;
+    }
+
+
+    /* !VERTEIDIGEN */
+
+    else if (
+      /^!verteidigen$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        `🛡️ @${username} Verteidigung registriert!`;
+    }
+
+
+    /* !SPEZIAL */
+
+    else if (
+      /^!spezial$/i.test(
+        text.trim()
+      )
+    ) {
+
+      w.energie =
+        Math.min(
+          100,
+          w.energie + 25
+        );
+
+      antwort =
+        `✨ @${username} Fuchs-Spezial! ` +
+        `+25 Energie.`;
+    }
+
+
+    /* !BEGLEITERKAMPF */
+
+    else if (
+      /^!begleiterkampf$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        `🐾⚔️ @${username} Begleiterkampf bereit! ` +
+        `Nutze !begleiterfähigkeit.`;
+    }
+
+
+    /* !TEAM */
+
+    else if (
+      /^!team$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        teamAnzeigen(
+          username
+        );
+    }
+
+
+    /* !TEAMGRÜNDEN */
+
+    else if (
+      /^!teamgründen\s+(.+)$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!teamgründen\s+(.+)$/i
+        );
+
+      antwort =
+        teamGruenden(
+          username,
+          match[1]
+        );
+    }
+
+
+    /* !TEAMEINLADEN */
+
+    else if (
+      /^!teameinladen\s+@?\w+$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!teameinladen\s+@?([\w]+)$/i
+        );
+
+      antwort =
+        teamEinladen(
+          username,
+          match[1]
+        );
+    }
+
+
+    /* !TEAMBEITRETEN */
+
+    else if (
+      /^!teambeitreten\s+(.+)$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!teambeitreten\s+(.+)$/i
+        );
+
+      antwort =
+        teamBeitreten(
+          username,
+          match[1]
+        );
+    }
+
+
+    /* !TEAMVERLASSEN */
+
+    else if (
+      /^!teamverlassen$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        teamVerlassen(
+          username
+        );
+    }
+
+
+    /* !TEAMAUFGABEN */
+
+    else if (
+      /^!teamaufgaben$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        teamAufgaben(
+          username
+        );
+    }
+
+
+    /* !EVENT */
+
+    else if (
+      /^!event$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        event();
+    }
+
+
+    /* !EVENTMITMACHEN */
+
+    else if (
+      /^!eventmitmachen$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        eventMitmachen(
+          username
+        );
+    }
+
+
+    /* !EVENTSTATUS */
+
+    else if (
+      /^!eventstatus$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        eventStatus(
+          username
+        );
+    }
+
+
+    else {
+
+      return;
+    }
+
+
+    if (
+      antwort
+    ) {
+
+      await streamelementsSenden(
+        antwort
+      );
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "❌ Chat-Fehler:",
+      error.message
     );
 
-
-  if (match) {
-
-    const antwort =
-      await pokemonKampfStart(
-        username,
-        match[1]
-      );
-
-
-    if (antwort) {
-
-      await streamelementsSenden(
-        antwort
-      );
-    }
-
-
-    return;
+    await streamelementsSenden(
+      `⚠️ @${username} In der Fuchswelt ist gerade ein kleiner Fehler passiert.`
+    );
   }
-
-
-  /* =================================================
-     !ANNEHMEN
-  ================================================= */
-
-  if (
-    /^!annehmen$/i.test(
-      text
-    )
-  ) {
-
-    const antwort =
-      await kampfAnnehmen(
-        username
-      );
-
-
-    if (antwort) {
-
-      await streamelementsSenden(
-        antwort
-      );
-    }
-
-
-    return;
-  }
-
-
-  /*
-     WICHTIG:
-
-     Normale Chatnachrichten lösen
-     KEINE persönliche Tagesquest mehr aus.
-
-     Nur !antwort kann die aktuelle
-     persönliche Quest abschließen.
-  */
-
-
-  if (
-    text.startsWith("!")
-  ) {
-    return;
-  }
-
-
-  /*
-     Normale Nachrichten dürfen weiterhin
-     für die bisherigen normalen Quest-Systeme
-     verarbeitet werden.
-  */
-
-  await normaleQuestsPruefen(
-    username,
-    text
-  );
 }
 
 
-/* =====================================================
-   PVP OVERLAY
-===================================================== */
+/* =========================================================
+   🌐 HTTP SERVER
+========================================================= */
 
-const overlay = `
-<!DOCTYPE html>
+const server =
+  http.createServer(
+    async (req, res) => {
 
+      try {
+
+        /* START */
+
+        if (
+          req.url === "/"
+        ) {
+
+          res.writeHead(
+            200,
+            {
+              "Content-Type":
+                "text/plain; charset=utf-8"
+            }
+          );
+
+          res.end(
+            "🦊 MitsusundWandasWelt – Fuchswelt Bot läuft!"
+          );
+
+          return;
+        }
+
+
+        /* PVP DATEN */
+
+        if (
+          req.url === "/pvp-data"
+        ) {
+
+          res.writeHead(
+            200,
+            {
+              "Content-Type":
+                "application/json; charset=utf-8",
+
+              "Cache-Control":
+                "no-store"
+            }
+          );
+
+          res.end(
+            JSON.stringify({
+              kampf:
+                aktuellerPvpKampf
+            })
+          );
+
+          return;
+        }
+
+
+        /* PVP OVERLAY */
+
+        if (
+          req.url === "/pvp"
+        ) {
+
+          res.writeHead(
+            200,
+            {
+              "Content-Type":
+                "text/html; charset=utf-8"
+            }
+          );
+
+          res.end(`<!DOCTYPE html>
 <html lang="de">
 
 <head>
@@ -2209,102 +4116,80 @@ const overlay = `
 <meta charset="UTF-8">
 
 <meta
-  name="viewport"
-  content="width=device-width,initial-scale=1.0"
+name="viewport"
+content="width=device-width,initial-scale=1.0"
 >
 
-<title>Fuchs PvP</title>
+<title>Fuchswelt PvP</title>
 
 <style>
 
 html,
-body {
-
-  margin: 0;
-
-  width: 100%;
-
-  height: 100%;
-
-  overflow: hidden;
-
-  background:
-    transparent;
-
-  font-family:
-    Arial,
-    sans-serif;
+body{
+margin:0;
+width:100%;
+height:100%;
+overflow:hidden;
+background:transparent;
+font-family:Arial,sans-serif;
 }
 
-.card {
-
-  margin: auto;
-
-  margin-top: 8%;
-
-  max-width: 900px;
-
-  padding: 28px;
-
-  border-radius: 24px;
-
-  background:
-    rgba(20,20,20,.92);
-
-  color: white;
-
-  text-align: center;
+#app{
+width:100%;
+height:100%;
+display:flex;
+align-items:center;
+justify-content:center;
 }
 
-.fighters {
-
-  display: flex;
-
-  justify-content: center;
-
-  align-items: center;
-
-  gap: 25px;
+.card{
+min-width:620px;
+max-width:90vw;
+padding:25px;
+border-radius:25px;
+background:rgba(20,20,20,.92);
+color:white;
+text-align:center;
 }
 
-.fighter {
-
-  min-width: 250px;
-
-  padding: 20px;
-
-  border-radius: 18px;
-
-  background:
-    rgba(255,255,255,.08);
+.title{
+font-size:34px;
+font-weight:900;
 }
 
-.name {
-
-  font-size: 28px;
-
-  font-weight: 800;
+.fighters{
+display:flex;
+justify-content:center;
+align-items:center;
+gap:22px;
+margin-top:20px;
 }
 
-.detail {
-
-  font-size: 22px;
-
-  margin-top: 10px;
+.fighter{
+min-width:220px;
+padding:18px;
+border-radius:18px;
+background:rgba(255,255,255,.08);
 }
 
-.vs {
-
-  font-size: 40px;
+.name{
+font-size:25px;
+font-weight:800;
 }
 
-.winner {
+.detail{
+font-size:20px;
+margin-top:8px;
+}
 
-  font-size: 28px;
+.vs{
+font-size:35px;
+}
 
-  font-weight: 900;
-
-  margin-top: 25px;
+.winner{
+margin-top:20px;
+font-size:25px;
+font-weight:900;
 }
 
 </style>
@@ -2317,246 +4202,123 @@ body {
 
 <script>
 
-async function laden() {
+async function laden(){
 
-  try {
+try{
 
-    const response =
-      await fetch(
-        "/pvp-data",
-        {
-          cache:
-            "no-store"
-        }
-      );
+const data =
+await (
+await fetch("/pvp-data")
+).json();
 
-    const data =
-      await response.json();
+const app =
+document.getElementById("app");
 
-    const kampf =
-      data.kampf;
+if(
+!data ||
+!data.kampf
+){
 
-    const app =
-      document.getElementById(
-        "app"
-      );
+app.innerHTML="";
 
-
-    if (!kampf) {
-
-      app.innerHTML = "";
-
-      return;
-    }
-
-
-    const pokemon =
-      kampf.typ ===
-      "pokemon";
-
-
-    const titel =
-      pokemon
-        ? "🐾 POKÉMON-KAMPF 🐾"
-        : "⚔️ RUDEL-KAMPF ⚔️";
-
-
-    const detail1 =
-      pokemon
-        ? kampf.angreiferPokemon
-        : kampf.angreiferRudel;
-
-
-    const detail2 =
-      pokemon
-        ? kampf.verteidigerPokemon
-        : kampf.verteidigerRudel;
-
-
-    app.innerHTML =
-
-      '<div class="card">' +
-
-      '<h1>' +
-      titel +
-      '</h1>' +
-
-      '<div class="fighters">' +
-
-      '<div class="fighter">' +
-
-      '<div class="name">' +
-      '@' +
-      kampf.angreifer +
-      '</div>' +
-
-      '<div class="detail">' +
-      (detail1 || "") +
-      '</div>' +
-
-      '</div>' +
-
-      '<div class="vs">⚔️</div>' +
-
-      '<div class="fighter">' +
-
-      '<div class="name">' +
-      '@' +
-      kampf.verteidiger +
-      '</div>' +
-
-      '<div class="detail">' +
-      (detail2 || "") +
-      '</div>' +
-
-      '</div>' +
-
-      '</div>' +
-
-      '<div class="winner">' +
-      '🏆 @' +
-      kampf.gewinner +
-      '</div>' +
-
-      '</div>';
-
-  } catch (error) {
-
-    console.error(
-      error
-    );
-  }
+return;
 }
 
+const k =
+data.kampf;
+
+const pokemon =
+k.typ === "pokemon";
+
+app.innerHTML =
+\`
+<div class="card">
+
+<div class="title">
+\${pokemon
+? "🐾 POKÉMON-KAMPF"
+: "⚔️ FUCHSDUELL"}
+</div>
+
+<div class="fighters">
+
+<div class="fighter">
+
+<div class="name">
+@\${k.angreifer}
+</div>
+
+<div class="detail">
+\${pokemon
+? k.angreiferPokemon
+: k.angreiferRudel || ""}
+</div>
+
+</div>
+
+<div class="vs">
+⚔️
+</div>
+
+<div class="fighter">
+
+<div class="name">
+@\${k.verteidiger}
+</div>
+
+<div class="detail">
+\${pokemon
+? k.verteidigerPokemon
+: k.verteidigerRudel || ""}
+</div>
+
+</div>
+
+</div>
+
+<div class="winner">
+🏆 @\${k.gewinner}
+</div>
+
+</div>
+\`;
+
+}
+
+catch(error){
+
+console.error(error);
+
+}
+
+}
 
 laden();
 
-
 setInterval(
-  laden,
-  1000
+laden,
+1000
 );
 
 </script>
 
 </body>
 
-</html>
-`;
-
-
-/* =====================================================
-   HTTP SERVER
-===================================================== */
-
-const server =
-  http.createServer(
-    async (
-      req,
-      res
-    ) => {
-
-      try {
-
-        /* =============================================
-           STARTSEITE
-        ============================================= */
-
-        if (
-          req.url ===
-          "/"
-        ) {
-
-          res.writeHead(
-            200,
-            {
-              "Content-Type":
-                "text/plain; charset=utf-8",
-            }
-          );
-
-
-          res.end(
-            "🦊 Fuchs-XP-Bot läuft!"
-          );
-
+</html>`);
 
           return;
         }
 
 
-        /* =============================================
-           PVP
-        ============================================= */
-
-        if (
-          req.url ===
-          "/pvp"
-        ) {
-
-          res.writeHead(
-            200,
-            {
-              "Content-Type":
-                "text/html; charset=utf-8",
-            }
-          );
-
-
-          res.end(
-            overlay
-          );
-
-
-          return;
-        }
-
-
-        /* =============================================
-           PVP-DATEN
-        ============================================= */
-
-        if (
-          req.url ===
-          "/pvp-data"
-        ) {
-
-          res.writeHead(
-            200,
-            {
-              "Content-Type":
-                "application/json; charset=utf-8",
-
-              "Cache-Control":
-                "no-store",
-            }
-          );
-
-
-          res.end(
-            JSON.stringify({
-              kampf:
-                aktuellerPvpKampf,
-            })
-          );
-
-
-          return;
-        }
-
-
-        /* =============================================
-           404
-        ============================================= */
+        /* 404 */
 
         res.writeHead(
           404,
           {
             "Content-Type":
-              "text/plain; charset=utf-8",
+              "text/plain; charset=utf-8"
           }
         );
-
 
         res.end(
           "404"
@@ -2569,11 +4331,9 @@ const server =
           error.message
         );
 
-
         res.writeHead(
           500
         );
-
 
         res.end(
           "500"
@@ -2583,9 +4343,18 @@ const server =
   );
 
 
-/* =====================================================
-   STREAM ELEMENTS WEBSOCKET
-===================================================== */
+/* =========================================================
+   📡 STREAMELEMENTS ASTRO WEBSOCKET
+========================================================= */
+
+let ws =
+  null;
+
+let reconnectToken =
+  null;
+
+let reconnectTimer =
+  null;
 
 function streamelementsVerbinden() {
 
@@ -2600,13 +4369,11 @@ function streamelementsVerbinden() {
     return;
   }
 
-
   if (
     ws &&
     (
       ws.readyState ===
       WebSocket.OPEN ||
-
       ws.readyState ===
       WebSocket.CONNECTING
     )
@@ -2615,27 +4382,21 @@ function streamelementsVerbinden() {
     return;
   }
 
-
   const url =
-    wsReconnectToken
-
+    reconnectToken
       ? `wss://astro.streamelements.com/?reconnect_token=${encodeURIComponent(
-          wsReconnectToken
+          reconnectToken
         )}`
-
       : "wss://astro.streamelements.com/";
-
 
   console.log(
     "🔌 Verbinde StreamElements WebSocket..."
   );
 
-
   ws =
     new WebSocket(
       url
     );
-
 
   ws.on(
     "open",
@@ -2644,9 +4405,9 @@ function streamelementsVerbinden() {
       console.log(
         "✅ StreamElements WebSocket verbunden."
       );
+
     }
   );
-
 
   ws.on(
     "message",
@@ -2660,30 +4421,18 @@ function streamelementsVerbinden() {
           );
 
 
-        /* ===========================================
-           WELCOME
-        =========================================== */
-
         if (
           message.type ===
           "welcome"
         ) {
 
-          wsReconnectToken =
-            null;
-
-
           ws.send(
             JSON.stringify({
-
               type:
                 "subscribe",
 
               nonce:
-                `fuchs-${Date.now()}-${zufall(
-                  1000,
-                  9999
-                )}`,
+                `fuchs-${Date.now()}`,
 
               data: {
 
@@ -2694,67 +4443,33 @@ function streamelementsVerbinden() {
                   STREAMELEMENTS_JWT,
 
                 token_type:
-                  "jwt",
-              },
+                  "jwt"
+              }
             })
           );
-
 
           console.log(
             "📡 channel.chat.message abonniert."
           );
 
-
           return;
         }
 
-
-        /* ===========================================
-           RECONNECT
-        =========================================== */
 
         if (
           message.type ===
           "reconnect"
         ) {
 
-          wsReconnectToken =
+          reconnectToken =
             message?.data?.reconnect_token ||
             null;
 
-
-          try {
-            ws.close();
-          } catch {}
-
+          ws.close();
 
           return;
         }
 
-
-        /* ===========================================
-           FEHLER
-        =========================================== */
-
-        if (
-          message.type ===
-            "response" &&
-          message.error
-        ) {
-
-          console.error(
-            "❌ StreamElements:",
-            message.error
-          );
-
-
-          return;
-        }
-
-
-        /* ===========================================
-           CHAT
-        =========================================== */
 
         await chatVerarbeiten(
           message
@@ -2766,78 +4481,65 @@ function streamelementsVerbinden() {
           "❌ WebSocket Nachricht:",
           error.message
         );
+
       }
+
     }
   );
-
 
   ws.on(
     "close",
     () => {
 
       console.log(
-        "🔌 StreamElements WebSocket geschlossen."
+        "🔁 StreamElements getrennt – neuer Versuch in 5 Sekunden."
       );
 
+      clearTimeout(
+        reconnectTimer
+      );
 
-      if (
-        wsReconnectTimer
-      ) {
-        return;
-      }
-
-
-      wsReconnectTimer =
+      reconnectTimer =
         setTimeout(
-          () => {
-
-            wsReconnectTimer =
-              null;
-
-            streamelementsVerbinden();
-
-          },
+          streamelementsVerbinden,
           5000
         );
     }
   );
-
 
   ws.on(
     "error",
     error => {
 
       console.error(
-        "❌ WebSocket Fehler:",
+        "❌ StreamElements WebSocket:",
         error.message
       );
+
     }
   );
 }
 
 
-/* =====================================================
-   START
-===================================================== */
+/* =========================================================
+   🚀 START
+========================================================= */
 
 server.listen(
   PORT,
   async () => {
 
     console.log(
-      `🚀 Fuchs-XP-Bot läuft auf Port ${PORT}`
+      `🚀 MitsusundWandasWelt Bot läuft auf Port ${PORT}`
     );
-
 
     console.log(
-      "🌐 PvP: /pvp"
+      `🌐 PvP: /pvp`
     );
-
 
     try {
 
       await streamElementsChannelHolen();
-
 
       console.log(
         "📺 StreamElements Kanal:",
@@ -2850,9 +4552,10 @@ server.listen(
         "⚠️ StreamElements Kanal:",
         error.message
       );
+
     }
 
-
     streamelementsVerbinden();
+
   }
 );
