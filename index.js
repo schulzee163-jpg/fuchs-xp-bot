@@ -93,6 +93,7 @@ let wsReconnectToken = null;
 ===================================================== */
 
 function normalisieren(username) {
+
   return String(username || "")
     .trim()
     .toLowerCase();
@@ -100,14 +101,18 @@ function normalisieren(username) {
 
 
 function zufall(min, max) {
+
   return Math.floor(
-    Math.random() * (max - min + 1)
+    Math.random() *
+    (max - min + 1)
   ) + min;
 }
 
 
 function dbHeaders(extra = {}) {
+
   return {
+
     apikey:
       SUPABASE_SERVICE_ROLE_KEY,
 
@@ -205,8 +210,35 @@ async function xpHinzufuegen(
 }
 
 
+async function xpAnzeigen(
+  username
+) {
+
+  const profil =
+    await profilAnlegen(
+      username
+    );
+
+  const xp =
+    Number(
+      profil.xp || 0
+    );
+
+  const level =
+    Math.floor(
+      xp / 100
+    ) + 1;
+
+  return (
+    `🦊 @${username} ` +
+    `du hast ${xp} XP ` +
+    `und bist Level ${level}!`
+  );
+}
+
+
 /* =====================================================
-   PROFIL HOLEN
+   PROFIL
 ===================================================== */
 
 async function profilHolen(
@@ -237,10 +269,6 @@ async function profilHolen(
   }
 }
 
-
-/* =====================================================
-   PROFIL ANLEGEN
-===================================================== */
 
 async function profilAnlegen(
   username
@@ -304,22 +332,18 @@ async function profilAnlegen(
 }
 
 
-/* =====================================================
-   XP BEFEHL
-===================================================== */
-
-async function xpAnzeigen(
+async function profil(
   username
 ) {
 
-  const profil =
+  const p =
     await profilAnlegen(
       username
     );
 
   const xp =
     Number(
-      profil.xp || 0
+      p.xp || 0
     );
 
   const level =
@@ -327,16 +351,27 @@ async function xpAnzeigen(
       xp / 100
     ) + 1;
 
+  const pokemon =
+    eigenePokemon[
+      normalisieren(username)
+    ] ||
+    p.pokemon ||
+    "kein Pokémon";
+
   return (
     `🦊 @${username} ` +
-    `du hast ${xp} XP ` +
-    `und bist Level ${level}!`
+    `| Level ${level} ` +
+    `| ${xp} XP ` +
+    `| ${p.rudel || "❓ kein Rudel"} ` +
+    `| 🐾 ${pokemon} ` +
+    `| ⚔️ ${p.pvp_siege || 0} Siege ` +
+    `/ ${p.pvp_niederlagen || 0} Niederlagen`
   );
 }
 
 
 /* =====================================================
-   STREAM ELEMENTS KANAL
+   STREAM ELEMENTS
 ===================================================== */
 
 async function streamElementsChannelHolen() {
@@ -399,10 +434,6 @@ async function streamElementsChannelHolen() {
   }
 }
 
-
-/* =====================================================
-   STREAM ELEMENTS NACHRICHT
-===================================================== */
 
 async function streamelementsSenden(
   text
@@ -515,10 +546,77 @@ async function normaleQuestsPruefen(
 
 /* =====================================================
    PERSÖNLICHE TAGESQUESTS
+
+   WICHTIG:
+
+   - 10 Aufgaben pro Tag
+   - immer nur EINE Aufgabe gleichzeitig
+   - !quest zeigt die nächste Aufgabe
+   - !antwort beantwortet die aktuelle Aufgabe
+   - jede Aufgabe = 10 XP
+   - nächste Aufgabe erscheint NICHT automatisch
 ===================================================== */
 
 const persoenlicheQuestStatus =
   new Map();
+
+
+/* =====================================================
+   DONNERSTAG
+===================================================== */
+
+const questDonnerstag = [
+
+  {
+    text:
+      "🔥 Erfinde einen Namen für einen neuen Ort im Feuertal.",
+  },
+
+  {
+    text:
+      "🌊 Erfinde einen Namen für einen geheimen Ort in den Wasserlanden.",
+  },
+
+  {
+    text:
+      "🌲 Erfinde ein Geheimnis, das im Fuchswald verborgen sein könnte.",
+  },
+
+  {
+    text:
+      "🧊 Erfinde ein Wesen, das in den Eisbergen lebt.",
+  },
+
+  {
+    text:
+      "🌙 Erfinde einen Namen für ein Geheimnis der Nacht.",
+  },
+
+  {
+    text:
+      "🦊 Erfinde einen Namen für einen besonderen Fuchs aus der Fuchswelt.",
+  },
+
+  {
+    text:
+      "✨ Erfinde einen magischen Gegenstand für die Fuchswelt.",
+  },
+
+  {
+    text:
+      "🐾 Erfinde ein neues Wesen für die Fuchswelt.",
+  },
+
+  {
+    text:
+      "🗺️ Erfinde einen Namen für einen geheimen Ort auf der Weltkarte.",
+  },
+
+  {
+    text:
+      "🌟 Erfinde einen Namen für ein großes Fest in Fuchsdorf.",
+  },
+];
 
 
 /* =====================================================
@@ -529,82 +627,52 @@ const questMontag = [
 
   {
     text:
-      "📝 Schreibe 10 Nachrichten im Chat.",
-    ziel: 10,
-    xp: 50,
-    typ: "messages",
+      "🦊 Erfinde einen Namen für deinen eigenen Fuchs.",
   },
 
   {
     text:
-      "📝 Schreibe 20 Nachrichten im Chat.",
-    ziel: 20,
-    xp: 100,
-    typ: "messages",
+      "🔥 Erfinde eine neue Attacke des Feuerrudels.",
   },
 
   {
     text:
-      "📝 Schreibe 30 Nachrichten im Chat.",
-    ziel: 30,
-    xp: 150,
-    typ: "messages",
+      "🌊 Erfinde einen Schatz aus den Wasserlanden.",
   },
 
   {
     text:
-      "📝 Schreibe 50 Nachrichten im Chat.",
-    ziel: 50,
-    xp: 250,
-    typ: "messages",
+      "🌲 Erfinde ein Geheimnis des Fuchswaldes.",
   },
 
   {
     text:
-      "📝 Schreibe 75 Nachrichten im Chat.",
-    ziel: 75,
-    xp: 350,
-    typ: "messages",
+      "🧊 Erfinde einen Schatz aus den Eisbergen.",
   },
 
   {
     text:
-      "⚡ Schreibe den Namen deines Lieblings-Pokémon in den Chat.",
-    ziel: 1,
-    xp: 50,
-    typ: "creative",
+      "🐾 Erfinde einen neuen Begleiter.",
   },
 
   {
     text:
-      "🌟 Schreibe, welches Pokémon du gerne als Partner auf einem Abenteuer hättest.",
-    ziel: 1,
-    xp: 75,
-    typ: "creative",
+      "✨ Erfinde eine magische Fähigkeit.",
   },
 
   {
     text:
-      "😂 Erfinde einen lustigen Spitznamen für ein Pokémon und schreibe ihn in den Chat.",
-    ziel: 1,
-    xp: 100,
-    typ: "creative",
+      "🗺️ Erfinde einen geheimen Ort.",
   },
 
   {
     text:
-      "🧪 Erfinde eine neue Pokémon-Attacke und schreibe ihren Namen in den Chat.",
-    ziel: 1,
-    xp: 125,
-    typ: "creative",
+      "🌙 Erfinde ein Geheimnis der Nacht.",
   },
 
   {
     text:
-      "😂 Erfinde eine lustige Pokémon-Entwicklung und schreibe, zu welchem Pokémon sie gehört.",
-    ziel: 1,
-    xp: 150,
-    typ: "creative",
+      "🌟 Erfinde eine neue Geschichte für die Fuchswelt.",
   },
 ];
 
@@ -617,82 +685,52 @@ const questDienstag = [
 
   {
     text:
-      "📝 Schreibe 10 Nachrichten im Chat.",
-    ziel: 10,
-    xp: 50,
-    typ: "messages",
+      "🎮 Nenne dein Lieblings-Videospiel.",
   },
 
   {
     text:
-      "📝 Schreibe 20 Nachrichten im Chat.",
-    ziel: 20,
-    xp: 100,
-    typ: "messages",
+      "🎬 Nenne deinen Lieblingsfilm.",
   },
 
   {
     text:
-      "📝 Schreibe 30 Nachrichten im Chat.",
-    ziel: 30,
-    xp: 150,
-    typ: "messages",
+      "🎵 Nenne deinen Lieblingssong.",
   },
 
   {
     text:
-      "📝 Schreibe 50 Nachrichten im Chat.",
-    ziel: 50,
-    xp: 250,
-    typ: "messages",
+      "🐾 Nenne dein Lieblingstier.",
   },
 
   {
     text:
-      "📝 Schreibe 75 Nachrichten im Chat.",
-    ziel: 75,
-    xp: 350,
-    typ: "messages",
+      "🦊 Erfinde einen lustigen Fuchsnamen.",
   },
 
   {
     text:
-      "🎬 Nenne einen Anime, den du gerne weiterempfehlen würdest.",
-    ziel: 1,
-    xp: 75,
-    typ: "creative",
+      "🎨 Erfinde eine neue Farbe für einen Fuchs.",
   },
 
   {
     text:
-      "🎮 Nenne dein Lieblingsspiel aus dem Store.",
-    ziel: 1,
-    xp: 100,
-    typ: "creative",
+      "😂 Erfinde einen lustigen Pokémon-Namen.",
   },
 
   {
     text:
-      "😂 Erfinde einen lustigen Namen für einen Videospiel-Charakter.",
-    ziel: 1,
-    xp: 125,
-    typ: "creative",
+      "🎭 Erfinde einen Namen für einen Videospiel-Charakter.",
   },
 
   {
     text:
-      "🐾 Wenn dein Haustier ein Videospiel hätte, wie würde es heißen?",
-    ziel: 1,
-    xp: 150,
-    typ: "creative",
+      "🌟 Erfinde einen Namen für deine eigene Spielwelt.",
   },
 
   {
     text:
-      "🎨 Erfinde den Namen für deine eigene Anime-Welt.",
-    ziel: 1,
-    xp: 175,
-    typ: "creative",
+      "✨ Erfinde einen magischen Gegenstand.",
   },
 ];
 
@@ -705,170 +743,52 @@ const questMittwoch = [
 
   {
     text:
-      "📝 Schreibe 10 Nachrichten im Chat.",
-    ziel: 10,
-    xp: 50,
-    typ: "messages",
+      "🌳 Erfinde einen Namen für einen Baum im Fuchswald.",
   },
 
   {
     text:
-      "📝 Schreibe 20 Nachrichten im Chat.",
-    ziel: 20,
-    xp: 100,
-    typ: "messages",
+      "💧 Erfinde eine besondere Quelle in den Wasserlanden.",
   },
 
   {
     text:
-      "📝 Schreibe 30 Nachrichten im Chat.",
-    ziel: 30,
-    xp: 150,
-    typ: "messages",
+      "🔥 Erfinde einen Vulkan im Feuertal.",
   },
 
   {
     text:
-      "📝 Schreibe 50 Nachrichten im Chat.",
-    ziel: 50,
-    xp: 250,
-    typ: "messages",
+      "🧊 Erfinde einen geheimen Ort in den Eisbergen.",
   },
 
   {
     text:
-      "📝 Schreibe 75 Nachrichten im Chat.",
-    ziel: 75,
-    xp: 350,
-    typ: "messages",
+      "🌙 Erfinde ein Wesen der Nacht.",
   },
 
   {
     text:
-      "🌳 Welchen Ort in der Fuchswelt würdest du gerne besuchen?",
-    ziel: 1,
-    xp: 75,
-    typ: "creative",
+      "🐾 Erfinde einen seltenen Begleiter.",
   },
 
   {
     text:
-      "🦊 Erfinde einen Namen für deinen eigenen Fuchs.",
-    ziel: 1,
-    xp: 100,
-    typ: "creative",
+      "🗺️ Erfinde einen geheimen Weg.",
   },
 
   {
     text:
-      "✨ Erfinde einen magischen Gegenstand für die Fuchswelt.",
-    ziel: 1,
-    xp: 125,
-    typ: "creative",
+      "🔐 Erfinde ein Geheimnis für das Geheimarchiv.",
   },
 
   {
     text:
-      "🐾 Erfinde ein neues Wesen für die Fuchswelt.",
-    ziel: 1,
-    xp: 150,
-    typ: "creative",
+      "🌟 Erfinde eine Legende der Fuchswelt.",
   },
 
   {
     text:
-      "🌟 Erfinde einen Namen für ein geheimes Gebiet der Fuchswelt.",
-    ziel: 1,
-    xp: 175,
-    typ: "creative",
-  },
-];
-
-
-/* =====================================================
-   DONNERSTAG
-===================================================== */
-
-const questDonnerstag = [
-
-  {
-    text:
-      "📝 Schreibe 10 Nachrichten im Chat.",
-    ziel: 10,
-    xp: 50,
-    typ: "messages",
-  },
-
-  {
-    text:
-      "📝 Schreibe 20 Nachrichten im Chat.",
-    ziel: 20,
-    xp: 100,
-    typ: "messages",
-  },
-
-  {
-    text:
-      "📝 Schreibe 30 Nachrichten im Chat.",
-    ziel: 30,
-    xp: 150,
-    typ: "messages",
-  },
-
-  {
-    text:
-      "📝 Schreibe 50 Nachrichten im Chat.",
-    ziel: 50,
-    xp: 250,
-    typ: "messages",
-  },
-
-  {
-    text:
-      "📝 Schreibe 75 Nachrichten im Chat.",
-    ziel: 75,
-    xp: 350,
-    typ: "messages",
-  },
-
-  {
-    text:
-      "🔥 Erfinde einen Namen für einen neuen Ort im Feuertal.",
-    ziel: 1,
-    xp: 75,
-    typ: "creative",
-  },
-
-  {
-    text:
-      "🌊 Erfinde einen Namen für einen geheimen Ort in den Wasserlanden.",
-    ziel: 1,
-    xp: 100,
-    typ: "creative",
-  },
-
-  {
-    text:
-      "🌲 Erfinde ein Geheimnis, das im Fuchswald verborgen sein könnte.",
-    ziel: 1,
-    xp: 125,
-    typ: "creative",
-  },
-
-  {
-    text:
-      "🧊 Erfinde ein Wesen, das in den Eisbergen lebt.",
-    ziel: 1,
-    xp: 150,
-    typ: "creative",
-  },
-
-  {
-    text:
-      "🌙 Erfinde einen Namen für ein Geheimnis der Nacht.",
-    ziel: 1,
-    xp: 175,
-    typ: "creative",
+      "🏡 Erfinde einen Namen für dein eigenes Fuchshaus.",
   },
 ];
 
@@ -881,82 +801,52 @@ const questFreitag = [
 
   {
     text:
-      "🎭 Erfinde einen lustigen Pokémon-Namen für dich selbst und schreibe ihn in den Chat.",
-    ziel: 1,
-    xp: 75,
-    typ: "creative",
+      "🎭 Erfinde einen lustigen Pokémon-Namen für dich selbst.",
   },
 
   {
     text:
       "😂 Wenn du ein Pokémon wärst: Welche besondere Fähigkeit hättest du?",
-    ziel: 1,
-    xp: 100,
-    typ: "creative",
   },
 
   {
     text:
-      "🎨 Erfinde eine neue Pokémon-Farbe für dein Lieblings-Pokémon und beschreibe sie kurz.",
-    ziel: 1,
-    xp: 100,
-    typ: "creative",
+      "🎨 Erfinde eine neue Pokémon-Farbe.",
   },
 
   {
     text:
       "🎤 Wie würde dein Pokémon-Trainername heißen?",
-    ziel: 1,
-    xp: 125,
-    typ: "creative",
   },
 
   {
     text:
-      "🎮 Welches Videospiel aus dem Store würdest du sofort kaufen, wenn es heute kostenlos wäre?",
-    ziel: 1,
-    xp: 150,
-    typ: "creative",
+      "🎮 Welches Videospiel würdest du sofort kaufen, wenn es heute kostenlos wäre?",
   },
 
   {
     text:
       "🎵 Welchen Song könntest du gerade immer wieder hören?",
-    ziel: 1,
-    xp: 175,
-    typ: "creative",
   },
 
   {
     text:
       "🎬 Wenn dein Leben ein Videospiel wäre, wie würde das Spiel heißen?",
-    ziel: 1,
-    xp: 200,
-    typ: "creative",
   },
 
   {
     text:
       "🐾 Wenn du ein Haustier aus einem Videospiel haben könntest, welches würdest du wählen?",
-    ziel: 1,
-    xp: 225,
-    typ: "creative",
   },
 
   {
     text:
       "🕹️ Nenne ein Videospiel, das du niemals langweilig findest.",
-    ziel: 1,
-    xp: 250,
-    typ: "creative",
   },
 
   {
     text:
       "🐾 Wenn dein Haustier ein Mensch wäre, welchen Beruf würde es haben?",
-    ziel: 1,
-    xp: 275,
-    typ: "creative",
   },
 ];
 
@@ -970,81 +860,51 @@ const questSamstag = [
   {
     text:
       "🎮 Nenne dein absolutes Lieblings-Videospiel.",
-    ziel: 1,
-    xp: 75,
-    typ: "creative",
   },
 
   {
     text:
       "🐶 Wenn du dir heute ein neues Haustier aussuchen könntest, welches Tier würdest du nehmen?",
-    ziel: 1,
-    xp: 100,
-    typ: "creative",
   },
 
   {
     text:
-      "🎵 Schreibe den Titel deines Lieblingssongs in den Chat.",
-    ziel: 1,
-    xp: 125,
-    typ: "creative",
+      "🎵 Schreibe den Titel deines Lieblingssongs.",
   },
 
   {
     text:
       "🎬 Welchen Film würdest du gerne noch einmal zum ersten Mal sehen können?",
-    ziel: 1,
-    xp: 150,
-    typ: "creative",
   },
 
   {
     text:
       "🚗 GTA: Wenn du in GTA ein eigenes Fahrzeug bauen könntest, wie würde es aussehen?",
-    ziel: 1,
-    xp: 175,
-    typ: "creative",
   },
 
   {
     text:
       "🚀 Wenn du für einen Tag ins Weltall fliegen könntest, was würdest du dort unbedingt machen?",
-    ziel: 1,
-    xp: 200,
-    typ: "creative",
   },
 
   {
     text:
       "👻 Du musst eine Nacht allein in einem verlassenen Haus verbringen. Was würdest du mitnehmen?",
-    ziel: 1,
-    xp: 225,
-    typ: "creative",
   },
 
   {
     text:
       "🦸 Wenn du für einen Tag ein Superheld sein könntest, welche Superkraft würdest du wählen?",
-    ziel: 1,
-    xp: 250,
-    typ: "creative",
   },
 
   {
     text:
       "🏖️ Du bekommst eine kostenlose Reise an jeden Ort der Welt. Wohin würdest du fliegen?",
-    ziel: 1,
-    xp: 275,
-    typ: "creative",
   },
 
   {
     text:
       "🎨 Erfinde einen Namen für einen eigenen Anime.",
-    ziel: 1,
-    xp: 300,
-    typ: "creative",
   },
 ];
 
@@ -1055,12 +915,60 @@ const questSamstag = [
 
 const questSonntag = [
 
-  ...questMontag,
+  {
+    text:
+      "🌟 Erfinde eine neue Geschichte für die Fuchswelt.",
+  },
+
+  {
+    text:
+      "🦊 Erfinde einen besonderen Fuchs.",
+  },
+
+  {
+    text:
+      "🔥 Erfinde eine neue Kraft des Feuerrudels.",
+  },
+
+  {
+    text:
+      "🌊 Erfinde eine neue Kraft der Wasserlande.",
+  },
+
+  {
+    text:
+      "🌲 Erfinde eine neue Kraft des Fuchswaldes.",
+  },
+
+  {
+    text:
+      "🧊 Erfinde eine neue Kraft der Eisberge.",
+  },
+
+  {
+    text:
+      "🌙 Erfinde ein Geheimnis der Nacht.",
+  },
+
+  {
+    text:
+      "🐾 Erfinde ein seltenes Wesen.",
+  },
+
+  {
+    text:
+      "🔐 Erfinde ein Geheimnis für das Geheimarchiv.",
+  },
+
+  {
+    text:
+      "🌟 Erfinde eine Legende für die Fuchswelt.",
+  },
 ];
 
 
 /* =====================================================
-   TAGESSET AUSWÄHLEN
+   TAGESSET
 ===================================================== */
 
 function tagesQuestSet() {
@@ -1068,29 +976,36 @@ function tagesQuestSet() {
   const tag =
     new Date().getDay();
 
+
   if (tag === 1) {
     return questMontag;
   }
+
 
   if (tag === 2) {
     return questDienstag;
   }
 
+
   if (tag === 3) {
     return questMittwoch;
   }
+
 
   if (tag === 4) {
     return questDonnerstag;
   }
 
+
   if (tag === 5) {
     return questFreitag;
   }
 
+
   if (tag === 6) {
     return questSamstag;
   }
+
 
   return questSonntag;
 }
@@ -1121,14 +1036,14 @@ function berlinDatum() {
 
 
 /* =====================================================
-   QUEST STATUS
+   QUEST STATUS HOLEN
 ===================================================== */
 
-function persoenlicheQuestsHolen(
+function persoenlicheQuestStatusHolen(
   username
 ) {
 
-  username =
+  const user =
     normalisieren(username);
 
   const datum =
@@ -1136,8 +1051,9 @@ function persoenlicheQuestsHolen(
 
   let status =
     persoenlicheQuestStatus.get(
-      username
+      user
     );
+
 
   if (
     !status ||
@@ -1148,31 +1064,43 @@ function persoenlicheQuestsHolen(
 
       datum,
 
+      aktuelleQuest:
+        0,
+
+      gestartet:
+        false,
+
       quests:
         tagesQuestSet().map(
-          q => ({
-            text: q.text,
-            ziel: q.ziel,
-            xp: q.xp,
-            typ: q.typ,
-            fortschritt: 0,
-            abgeschlossen: false,
+          quest => ({
+            text:
+              quest.text,
+
+            xp:
+              10,
+
+            abgeschlossen:
+              false,
           })
         ),
     };
 
+
     persoenlicheQuestStatus.set(
-      username,
+      user,
       status
     );
   }
+
 
   return status;
 }
 
 
 /* =====================================================
-   QUEST ANZEIGEN
+   !QUEST
+
+   Zeigt IMMER nur die nächste Aufgabe.
 ===================================================== */
 
 async function persoenlicheQuestAnzeigen(
@@ -1180,164 +1108,174 @@ async function persoenlicheQuestAnzeigen(
 ) {
 
   const status =
-    persoenlicheQuestsHolen(
+    persoenlicheQuestStatusHolen(
       username
     );
 
-  const liste =
-    status.quests
-      .map(
-        (q, i) => {
 
-          const symbol =
-            q.abgeschlossen
-              ? "✅"
-              : "⬜";
+  /*
+     Alle 10 erledigt
+  */
 
-          return (
-            `${symbol} ${i + 1}. ` +
-            `${q.text} ` +
-            `(${q.fortschritt}/${q.ziel}) ` +
-            `+${q.xp} XP`
-          );
-        }
-      )
-      .join(" | ");
+  if (
+    status.aktuelleQuest >=
+    status.quests.length
+  ) {
+
+    return (
+      `🎉 @${username} Du hast heute deine ` +
+      `10 persönlichen Aufgaben abgeschlossen ` +
+      `und 100 XP bekommen! 🦊 ` +
+      `Komm morgen wieder, da bekommst du neue Aufgaben.`
+    );
+  }
+
+
+  const nummer =
+    status.aktuelleQuest + 1;
+
+
+  const quest =
+    status.quests[
+      status.aktuelleQuest
+    ];
+
+
+  status.gestartet =
+    true;
+
 
   return (
-    `🎯 @${username} Tagesquests: ${liste}`
+    `🎯 @${username} Deine persönliche Tagesquest ` +
+    `${nummer}/10: ${quest.text} ` +
+    `→ Belohnung: +10 XP 🦊 ` +
+    `Antworte mit !antwort [deine Antwort]`
   );
 }
 
 
 /* =====================================================
-   QUEST PRÜFEN
+   !ANTWORT
+
+   Nur damit wird eine persönliche kreative
+   Tagesquest abgeschlossen.
 ===================================================== */
 
-async function persoenlicheQuestPruefen(
+async function persoenlicheQuestAntwort(
   username,
-  text
+  antwort
 ) {
 
-  username =
-    normalisieren(username);
-
-  const nachricht =
-    String(text || "").trim();
-
-  if (!nachricht) {
-    return;
-  }
-
-
-  /*
-     WICHTIG:
-
-     Befehle werden hier niemals
-     als persönliche Quest gezählt.
-  */
-
-  if (
-    nachricht.startsWith("!")
-  ) {
-    return;
-  }
-
-
   const status =
-    persoenlicheQuestsHolen(
+    persoenlicheQuestStatusHolen(
       username
     );
 
 
   /*
-     NACHRICHTENQUESTS
-
-     Jede normale Chatnachricht
-     erhöht den Nachrichtenstand.
+     Keine Antwort
   */
 
-  for (
-    const quest
-    of status.quests
+  if (
+    !antwort ||
+    !String(antwort).trim()
   ) {
 
-    if (
-      quest.abgeschlossen
-    ) {
-      continue;
-    }
-
-    if (
-      quest.typ ===
-      "messages"
-    ) {
-
-      quest.fortschritt =
-        Math.min(
-          quest.ziel,
-          quest.fortschritt + 1
-        );
-
-      if (
-        quest.fortschritt >=
-        quest.ziel
-      ) {
-
-        quest.abgeschlossen =
-          true;
-
-        await xpHinzufuegen(
-          username,
-          quest.xp
-        );
-
-        await streamelementsSenden(
-          `🎉 @${username} Tagesquest geschafft! ${quest.text} → +${quest.xp} XP 🦊`
-        );
-      }
-    }
+    return (
+      `@${username} ❌ Bitte schreibe deine Antwort hinter !antwort.`
+    );
   }
 
 
   /*
-     KREATIVE QUESTS
-
-     PRO CHATNACHRICHT wird
-     HÖCHSTENS EINE kreative Quest
-     abgeschlossen.
-
-     Dadurch kann niemals eine
-     einzige Nachricht alle fünf
-     kreativen Quests abschließen.
+     Alle erledigt
   */
 
-  const kreativeQuest =
-    status.quests.find(
-      q =>
-        !q.abgeschlossen &&
-        q.typ === "creative"
-    );
+  if (
+    status.aktuelleQuest >=
+    status.quests.length
+  ) {
 
-  if (!kreativeQuest) {
-    return;
+    return (
+      `@${username} 🎉 Du hast heute bereits alle 10 persönlichen Aufgaben abgeschlossen. 🦊`
+    );
   }
 
 
-  kreativeQuest.fortschritt = 1;
+  /*
+     !quest wurde vorher noch nicht benutzt
+  */
 
-  kreativeQuest.abgeschlossen =
+  if (
+    !status.gestartet
+  ) {
+
+    return (
+      `@${username} ❌ Schreibe zuerst !quest, damit ich dir deine aktuelle Tagesquest geben kann. 🦊`
+    );
+  }
+
+
+  const quest =
+    status.quests[
+      status.aktuelleQuest
+    ];
+
+
+  /*
+     Quest abschließen
+  */
+
+  quest.abgeschlossen =
     true;
 
 
   await xpHinzufuegen(
     username,
-    kreativeQuest.xp
+    10
   );
 
 
-  await streamelementsSenden(
-    `🎉 @${username} Tagesquest geschafft! ${kreativeQuest.text} → +${kreativeQuest.xp} XP 🦊`
+  const nummer =
+    status.aktuelleQuest + 1;
+
+
+  status.aktuelleQuest += 1;
+
+
+  status.gestartet =
+    false;
+
+
+  /*
+     Letzte Quest
+  */
+
+  if (
+    status.aktuelleQuest >=
+    status.quests.length
+  ) {
+
+    return (
+      `🎉 @${username} Tagesquest ${nummer}/10 erfolgreich abgeschlossen! ` +
+      `→ +10 XP 🦊 ` +
+      `Du hast heute deine 10 persönlichen Aufgaben abgeschlossen ` +
+      `und insgesamt 100 XP bekommen! 🎉 ` +
+      `Komm morgen wieder, da bekommst du neue Aufgaben.`
+    );
+  }
+
+
+  /*
+     Noch weitere Aufgaben vorhanden.
+
+     Die nächste wird NICHT automatisch angezeigt.
+  */
+
+  return (
+    `🎉 @${username} Tagesquest ${nummer}/10 erfolgreich abgeschlossen! ` +
+    `→ +10 XP 🦊 ` +
+    `Schreibe !quest, wenn du deine nächste Aufgabe möchtest.`
   );
 }
 
@@ -1359,6 +1297,7 @@ async function rudelwahl(
   const rudel =
     rudelMap[key];
 
+
   if (!rudel) {
 
     return (
@@ -1366,6 +1305,7 @@ async function rudelwahl(
       `Wähle Feuer, Wasser, Wald oder ICE.`
     );
   }
+
 
   try {
 
@@ -1389,6 +1329,7 @@ async function rudelwahl(
       }
     );
 
+
     return (
       `@${username} 🐺 Du bist jetzt im ${rudel}!`
     );
@@ -1400,6 +1341,7 @@ async function rudelwahl(
       error.message
     );
 
+
     return (
       `@${username} ❌ Dein Rudel konnte nicht gespeichert werden.`
     );
@@ -1408,7 +1350,7 @@ async function rudelwahl(
 
 
 /* =====================================================
-   POKÉMON WAHL
+   POKÉMON
 ===================================================== */
 
 async function pokemonWahl(
@@ -1417,12 +1359,11 @@ async function pokemonWahl(
 ) {
 
   const user =
-    normalisieren(
-      username
-    );
+    normalisieren(username);
 
   const fest =
     eigenePokemon[user];
+
 
   if (!auswahl) {
 
@@ -1431,9 +1372,11 @@ async function pokemonWahl(
         user
       );
 
+
     const pokemon =
       fest ||
       profil.pokemon;
+
 
     if (!pokemon) {
 
@@ -1442,6 +1385,7 @@ async function pokemonWahl(
         `Nutze !pokemon Name`
       );
     }
+
 
     return (
       `@${username} 🐾 Dein Pokémon ist ${pokemon}!`
@@ -1491,6 +1435,7 @@ async function pokemonWahl(
       }
     );
 
+
     return (
       `@${username} 🐾 Dein Pokémon ist jetzt ${pokemon}!`
     );
@@ -1502,52 +1447,11 @@ async function pokemonWahl(
       error.message
     );
 
+
     return (
       `@${username} ❌ Pokémon konnte nicht gespeichert werden.`
     );
   }
-}
-
-
-/* =====================================================
-   PROFIL
-===================================================== */
-
-async function profil(
-  username
-) {
-
-  const p =
-    await profilAnlegen(
-      username
-    );
-
-  const xp =
-    Number(
-      p.xp || 0
-    );
-
-  const level =
-    Math.floor(
-      xp / 100
-    ) + 1;
-
-  const pokemon =
-    eigenePokemon[
-      normalisieren(username)
-    ] ||
-    p.pokemon ||
-    "kein Pokémon";
-
-  return (
-    `🦊 @${username} ` +
-    `| Level ${level} ` +
-    `| ${xp} XP ` +
-    `| ${p.rudel || "❓ kein Rudel"} ` +
-    `| 🐾 ${pokemon} ` +
-    `| ⚔️ ${p.pvp_siege || 0} Siege ` +
-    `/ ${p.pvp_niederlagen || 0} Niederlagen`
-  );
 }
 
 
@@ -1569,6 +1473,7 @@ async function pvpStart(
     normalisieren(
       gegner
     );
+
 
   if (
     !verteidiger ||
@@ -1625,14 +1530,10 @@ async function pvpStart(
   );
 
 
-  /*
-     FuchsMiss akzeptiert
-     automatisch.
-  */
-
   if (
     angreifer ===
     "fuchsmissvegetalover2_0" ||
+
     verteidiger ===
     "fuchsmissvegetalover2_0"
   ) {
@@ -1720,6 +1621,7 @@ async function pokemonKampfStart(
   offeneKaempfe.set(
     verteidiger,
     {
+
       angreifer,
 
       verteidiger,
@@ -1745,6 +1647,7 @@ async function pokemonKampfStart(
   if (
     angreifer ===
     "fuchsmissvegetalover2_0" ||
+
     verteidiger ===
     "fuchsmissvegetalover2_0"
   ) {
@@ -1756,7 +1659,8 @@ async function pokemonKampfStart(
 
 
   return (
-    `⚡ @${angreifer} fordert @${verteidiger} zum Pokémon-Kampf heraus! ` +
+    `⚡ @${angreifer} fordert @${verteidiger} ` +
+    `zum Pokémon-Kampf heraus! ` +
     `@${verteidiger} schreibe !annehmen`
   );
 }
@@ -1774,6 +1678,7 @@ async function kampfAnnehmen(
     normalisieren(
       username
     );
+
 
   const kampf =
     offeneKaempfe.get(
@@ -1897,8 +1802,10 @@ async function kampfAnnehmen(
 
   return (
     `⚔️ RUDEL-KAMPF! ` +
-    `@${kampf.angreifer} [${kampf.angreiferRudel || "kein Rudel"}] ⚔️ ` +
-    `@${kampf.verteidiger} [${kampf.verteidigerRudel || "kein Rudel"}] ` +
+    `@${kampf.angreifer} ` +
+    `[${kampf.angreiferRudel || "kein Rudel"}] ⚔️ ` +
+    `@${kampf.verteidiger} ` +
+    `[${kampf.verteidigerRudel || "kein Rudel"}] ` +
     `→ 🏆 @${gewinner} gewinnt +100 XP!`
   );
 }
@@ -1917,6 +1824,7 @@ async function alleBefehle(
     `!xp | ` +
     `!profil | ` +
     `!quest | ` +
+    `!antwort [Antwort] | ` +
     `!rudelwahl Feuer/Wasser/Wald/ICE | ` +
     `!pokemon | ` +
     `!pokemon Name | ` +
@@ -2063,6 +1971,29 @@ async function chatVerarbeiten(
 
 
   /* =================================================
+     !ANTWORT
+  ================================================= */
+
+  let match =
+    text.match(
+      /^!antwort\s+(.+)$/i
+    );
+
+
+  if (match) {
+
+    await streamelementsSenden(
+      await persoenlicheQuestAntwort(
+        username,
+        match[1]
+      )
+    );
+
+    return;
+  }
+
+
+  /* =================================================
      !ALLEBEFEHLE
   ================================================= */
 
@@ -2086,7 +2017,7 @@ async function chatVerarbeiten(
      !RUDELWAHL
   ================================================= */
 
-  let match =
+  match =
     text.match(
       /^!rudelwahl\s+(.+)$/i
     );
@@ -2148,6 +2079,7 @@ async function chatVerarbeiten(
           match[1]
         );
 
+
       if (antwort) {
 
         await streamelementsSenden(
@@ -2162,10 +2094,12 @@ async function chatVerarbeiten(
         error.message
       );
 
+
       await streamelementsSenden(
         `@${username} ❌ Der PvP-Kampf konnte nicht gestartet werden.`
       );
     }
+
 
     return;
   }
@@ -2189,12 +2123,14 @@ async function chatVerarbeiten(
         match[1]
       );
 
+
     if (antwort) {
 
       await streamelementsSenden(
         antwort
       );
     }
+
 
     return;
   }
@@ -2215,6 +2151,7 @@ async function chatVerarbeiten(
         username
       );
 
+
     if (antwort) {
 
       await streamelementsSenden(
@@ -2222,17 +2159,21 @@ async function chatVerarbeiten(
       );
     }
 
+
     return;
   }
 
 
-  /* =================================================
-     ANDERE BEFEHLE
+  /*
+     WICHTIG:
 
-     Alle Nachrichten mit !
-     werden NICHT als persönliche
-     Quest gezählt.
-  ================================================= */
+     Normale Chatnachrichten lösen
+     KEINE persönliche Tagesquest mehr aus.
+
+     Nur !antwort kann die aktuelle
+     persönliche Quest abschließen.
+  */
+
 
   if (
     text.startsWith("!")
@@ -2241,17 +2182,13 @@ async function chatVerarbeiten(
   }
 
 
-  /* =================================================
-     NORMALE CHATNACHRICHT
-  ================================================= */
+  /*
+     Normale Nachrichten dürfen weiterhin
+     für die bisherigen normalen Quest-Systeme
+     verarbeitet werden.
+  */
 
   await normaleQuestsPruefen(
-    username,
-    text
-  );
-
-
-  await persoenlicheQuestPruefen(
     username,
     text
   );
@@ -2404,6 +2341,7 @@ async function laden() {
         "app"
       );
 
+
     if (!kampf) {
 
       app.innerHTML = "";
@@ -2411,24 +2349,29 @@ async function laden() {
       return;
     }
 
+
     const pokemon =
       kampf.typ ===
       "pokemon";
+
 
     const titel =
       pokemon
         ? "🐾 POKÉMON-KAMPF 🐾"
         : "⚔️ RUDEL-KAMPF ⚔️";
 
+
     const detail1 =
       pokemon
         ? kampf.angreiferPokemon
         : kampf.angreiferRudel;
 
+
     const detail2 =
       pokemon
         ? kampf.verteidigerPokemon
         : kampf.verteidigerRudel;
+
 
     app.innerHTML =
 
@@ -2485,7 +2428,9 @@ async function laden() {
   }
 }
 
+
 laden();
+
 
 setInterval(
   laden,
@@ -2530,16 +2475,18 @@ const server =
             }
           );
 
+
           res.end(
             "🦊 Fuchs-XP-Bot läuft!"
           );
+
 
           return;
         }
 
 
         /* =============================================
-           PVP OVERLAY
+           PVP
         ============================================= */
 
         if (
@@ -2555,16 +2502,18 @@ const server =
             }
           );
 
+
           res.end(
             overlay
           );
+
 
           return;
         }
 
 
         /* =============================================
-           PVP DATEN
+           PVP-DATEN
         ============================================= */
 
         if (
@@ -2583,12 +2532,14 @@ const server =
             }
           );
 
+
           res.end(
             JSON.stringify({
               kampf:
                 aktuellerPvpKampf,
             })
           );
+
 
           return;
         }
@@ -2606,6 +2557,7 @@ const server =
           }
         );
 
+
         res.end(
           "404"
         );
@@ -2617,9 +2569,11 @@ const server =
           error.message
         );
 
+
         res.writeHead(
           500
         );
+
 
         res.end(
           "500"
@@ -2750,6 +2704,7 @@ function streamelementsVerbinden() {
             "📡 channel.chat.message abonniert."
           );
 
+
           return;
         }
 
@@ -2767,9 +2722,11 @@ function streamelementsVerbinden() {
             message?.data?.reconnect_token ||
             null;
 
+
           try {
             ws.close();
           } catch {}
+
 
           return;
         }
@@ -2789,6 +2746,7 @@ function streamelementsVerbinden() {
             "❌ StreamElements:",
             message.error
           );
+
 
           return;
         }
@@ -2859,7 +2817,7 @@ function streamelementsVerbinden() {
 
 
 /* =====================================================
-   BOT STARTEN
+   START
 ===================================================== */
 
 server.listen(
@@ -2870,6 +2828,7 @@ server.listen(
       `🚀 Fuchs-XP-Bot läuft auf Port ${PORT}`
     );
 
+
     console.log(
       "🌐 PvP: /pvp"
     );
@@ -2878,6 +2837,7 @@ server.listen(
     try {
 
       await streamElementsChannelHolen();
+
 
       console.log(
         "📺 StreamElements Kanal:",
