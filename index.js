@@ -1,6 +1,11 @@
 import http from "http";
 import WebSocket from "ws";
 
+
+/* =====================================================
+   KONFIGURATION
+===================================================== */
+
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
   "https://herznunvdqcmzeffblgo.supabase.co";
@@ -19,7 +24,7 @@ let streamElementsChannel =
 
 
 /* =====================================================
-   FUCHSWELT
+   POKÉMON
 ===================================================== */
 
 const eigenePokemon = {
@@ -50,6 +55,11 @@ const pokemonListe = [
   "Sterndu",
 ];
 
+
+/* =====================================================
+   RUDEL
+===================================================== */
+
 const rudelMap = {
   feuer: "🔥 Feuerrudel",
   wasser: "🌊 Wasserrudel",
@@ -66,8 +76,15 @@ const offeneKaempfe = new Map();
 
 let aktuellerPvpKampf = null;
 
+
+/* =====================================================
+   WEBSOCKET
+===================================================== */
+
 let ws = null;
+
 let wsReconnectTimer = null;
+
 let wsReconnectToken = null;
 
 
@@ -81,15 +98,18 @@ function normalisieren(username) {
     .toLowerCase();
 }
 
+
 function zufall(min, max) {
   return Math.floor(
     Math.random() * (max - min + 1)
   ) + min;
 }
 
+
 function dbHeaders(extra = {}) {
   return {
-    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    apikey:
+      SUPABASE_SERVICE_ROLE_KEY,
 
     Authorization:
       `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
@@ -101,10 +121,12 @@ function dbHeaders(extra = {}) {
   };
 }
 
+
 async function supabase(
   path,
   options = {}
 ) {
+
   const response =
     await fetch(
       SUPABASE_URL + path,
@@ -122,6 +144,7 @@ async function supabase(
     await response.text();
 
   if (!response.ok) {
+
     throw new Error(
       `Supabase ${response.status}: ${text}`
     );
@@ -132,15 +155,19 @@ async function supabase(
     : null;
 }
 
+
 async function rpc(
   name,
   body = {}
 ) {
+
   return supabase(
     `/rest/v1/rpc/${name}`,
     {
       method: "POST",
-      body: JSON.stringify(body),
+
+      body:
+        JSON.stringify(body),
     }
   );
 }
@@ -154,7 +181,9 @@ async function xpHinzufuegen(
   username,
   xp
 ) {
+
   try {
+
     await rpc(
       "fuchs_xp_hinzufuegen",
       {
@@ -165,7 +194,9 @@ async function xpHinzufuegen(
           Number(xp) || 0,
       }
     );
+
   } catch (error) {
+
     console.error(
       "❌ XP:",
       error.message
@@ -175,13 +206,15 @@ async function xpHinzufuegen(
 
 
 /* =====================================================
-   PROFIL
+   PROFIL HOLEN
 ===================================================== */
 
 async function profilHolen(
   username
 ) {
+
   try {
+
     const rows =
       await supabase(
         `/rest/v1/fuchsprofile` +
@@ -204,9 +237,15 @@ async function profilHolen(
   }
 }
 
+
+/* =====================================================
+   PROFIL ANLEGEN
+===================================================== */
+
 async function profilAnlegen(
   username
 ) {
+
   const user =
     normalisieren(username);
 
@@ -266,7 +305,38 @@ async function profilAnlegen(
 
 
 /* =====================================================
-   STREAM ELEMENTS
+   XP BEFEHL
+===================================================== */
+
+async function xpAnzeigen(
+  username
+) {
+
+  const profil =
+    await profilAnlegen(
+      username
+    );
+
+  const xp =
+    Number(
+      profil.xp || 0
+    );
+
+  const level =
+    Math.floor(
+      xp / 100
+    ) + 1;
+
+  return (
+    `🦊 @${username} ` +
+    `du hast ${xp} XP ` +
+    `und bist Level ${level}!`
+  );
+}
+
+
+/* =====================================================
+   STREAM ELEMENTS KANAL
 ===================================================== */
 
 async function streamElementsChannelHolen() {
@@ -276,6 +346,7 @@ async function streamElementsChannelHolen() {
   }
 
   if (!STREAMELEMENTS_JWT) {
+
     console.error(
       "❌ STREAMELEMENTS_JWT fehlt."
     );
@@ -328,6 +399,11 @@ async function streamElementsChannelHolen() {
   }
 }
 
+
+/* =====================================================
+   STREAM ELEMENTS NACHRICHT
+===================================================== */
+
 async function streamelementsSenden(
   text
 ) {
@@ -340,6 +416,7 @@ async function streamelementsSenden(
   }
 
   if (!STREAMELEMENTS_JWT) {
+
     console.error(
       "❌ StreamElements JWT fehlt."
     );
@@ -438,14 +515,17 @@ async function normaleQuestsPruefen(
 
 /* =====================================================
    PERSÖNLICHE TAGESQUESTS
-   10 QUESTS PRO TAG
 ===================================================== */
 
 const persoenlicheQuestStatus =
   new Map();
 
 
-const questTag1 = [
+/* =====================================================
+   MONTAG
+===================================================== */
+
+const questMontag = [
 
   {
     text:
@@ -492,7 +572,7 @@ const questTag1 = [
       "⚡ Schreibe den Namen deines Lieblings-Pokémon in den Chat.",
     ziel: 1,
     xp: 50,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -500,7 +580,7 @@ const questTag1 = [
       "🌟 Schreibe, welches Pokémon du gerne als Partner auf einem Abenteuer hättest.",
     ziel: 1,
     xp: 75,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -508,7 +588,7 @@ const questTag1 = [
       "😂 Erfinde einen lustigen Spitznamen für ein Pokémon und schreibe ihn in den Chat.",
     ziel: 1,
     xp: 100,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -516,7 +596,7 @@ const questTag1 = [
       "🧪 Erfinde eine neue Pokémon-Attacke und schreibe ihren Namen in den Chat.",
     ziel: 1,
     xp: 125,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -524,16 +604,14 @@ const questTag1 = [
       "😂 Erfinde eine lustige Pokémon-Entwicklung und schreibe, zu welchem Pokémon sie gehört.",
     ziel: 1,
     xp: 150,
-    typ: "text",
+    typ: "creative",
   },
 ];
 
 
-const questMontag = [
-
-  ...questTag1,
-];
-
+/* =====================================================
+   DIENSTAG
+===================================================== */
 
 const questDienstag = [
 
@@ -582,7 +660,7 @@ const questDienstag = [
       "🎬 Nenne einen Anime, den du gerne weiterempfehlen würdest.",
     ziel: 1,
     xp: 75,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -590,7 +668,7 @@ const questDienstag = [
       "🎮 Nenne dein Lieblingsspiel aus dem Store.",
     ziel: 1,
     xp: 100,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -598,7 +676,7 @@ const questDienstag = [
       "😂 Erfinde einen lustigen Namen für einen Videospiel-Charakter.",
     ziel: 1,
     xp: 125,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -606,7 +684,7 @@ const questDienstag = [
       "🐾 Wenn dein Haustier ein Videospiel hätte, wie würde es heißen?",
     ziel: 1,
     xp: 150,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -614,14 +692,190 @@ const questDienstag = [
       "🎨 Erfinde den Namen für deine eigene Anime-Welt.",
     ziel: 1,
     xp: 175,
-    typ: "text",
+    typ: "creative",
   },
 ];
 
 
-const questMittwoch =
-  questDienstag;
+/* =====================================================
+   MITTWOCH
+===================================================== */
 
+const questMittwoch = [
+
+  {
+    text:
+      "📝 Schreibe 10 Nachrichten im Chat.",
+    ziel: 10,
+    xp: 50,
+    typ: "messages",
+  },
+
+  {
+    text:
+      "📝 Schreibe 20 Nachrichten im Chat.",
+    ziel: 20,
+    xp: 100,
+    typ: "messages",
+  },
+
+  {
+    text:
+      "📝 Schreibe 30 Nachrichten im Chat.",
+    ziel: 30,
+    xp: 150,
+    typ: "messages",
+  },
+
+  {
+    text:
+      "📝 Schreibe 50 Nachrichten im Chat.",
+    ziel: 50,
+    xp: 250,
+    typ: "messages",
+  },
+
+  {
+    text:
+      "📝 Schreibe 75 Nachrichten im Chat.",
+    ziel: 75,
+    xp: 350,
+    typ: "messages",
+  },
+
+  {
+    text:
+      "🌳 Welchen Ort in der Fuchswelt würdest du gerne besuchen?",
+    ziel: 1,
+    xp: 75,
+    typ: "creative",
+  },
+
+  {
+    text:
+      "🦊 Erfinde einen Namen für deinen eigenen Fuchs.",
+    ziel: 1,
+    xp: 100,
+    typ: "creative",
+  },
+
+  {
+    text:
+      "✨ Erfinde einen magischen Gegenstand für die Fuchswelt.",
+    ziel: 1,
+    xp: 125,
+    typ: "creative",
+  },
+
+  {
+    text:
+      "🐾 Erfinde ein neues Wesen für die Fuchswelt.",
+    ziel: 1,
+    xp: 150,
+    typ: "creative",
+  },
+
+  {
+    text:
+      "🌟 Erfinde einen Namen für ein geheimes Gebiet der Fuchswelt.",
+    ziel: 1,
+    xp: 175,
+    typ: "creative",
+  },
+];
+
+
+/* =====================================================
+   DONNERSTAG
+===================================================== */
+
+const questDonnerstag = [
+
+  {
+    text:
+      "📝 Schreibe 10 Nachrichten im Chat.",
+    ziel: 10,
+    xp: 50,
+    typ: "messages",
+  },
+
+  {
+    text:
+      "📝 Schreibe 20 Nachrichten im Chat.",
+    ziel: 20,
+    xp: 100,
+    typ: "messages",
+  },
+
+  {
+    text:
+      "📝 Schreibe 30 Nachrichten im Chat.",
+    ziel: 30,
+    xp: 150,
+    typ: "messages",
+  },
+
+  {
+    text:
+      "📝 Schreibe 50 Nachrichten im Chat.",
+    ziel: 50,
+    xp: 250,
+    typ: "messages",
+  },
+
+  {
+    text:
+      "📝 Schreibe 75 Nachrichten im Chat.",
+    ziel: 75,
+    xp: 350,
+    typ: "messages",
+  },
+
+  {
+    text:
+      "🔥 Erfinde einen Namen für einen neuen Ort im Feuertal.",
+    ziel: 1,
+    xp: 75,
+    typ: "creative",
+  },
+
+  {
+    text:
+      "🌊 Erfinde einen Namen für einen geheimen Ort in den Wasserlanden.",
+    ziel: 1,
+    xp: 100,
+    typ: "creative",
+  },
+
+  {
+    text:
+      "🌲 Erfinde ein Geheimnis, das im Fuchswald verborgen sein könnte.",
+    ziel: 1,
+    xp: 125,
+    typ: "creative",
+  },
+
+  {
+    text:
+      "🧊 Erfinde ein Wesen, das in den Eisbergen lebt.",
+    ziel: 1,
+    xp: 150,
+    typ: "creative",
+  },
+
+  {
+    text:
+      "🌙 Erfinde einen Namen für ein Geheimnis der Nacht.",
+    ziel: 1,
+    xp: 175,
+    typ: "creative",
+  },
+];
+
+
+/* =====================================================
+   FREITAG
+===================================================== */
 
 const questFreitag = [
 
@@ -630,7 +884,7 @@ const questFreitag = [
       "🎭 Erfinde einen lustigen Pokémon-Namen für dich selbst und schreibe ihn in den Chat.",
     ziel: 1,
     xp: 75,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -638,7 +892,7 @@ const questFreitag = [
       "😂 Wenn du ein Pokémon wärst: Welche besondere Fähigkeit hättest du?",
     ziel: 1,
     xp: 100,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -646,7 +900,7 @@ const questFreitag = [
       "🎨 Erfinde eine neue Pokémon-Farbe für dein Lieblings-Pokémon und beschreibe sie kurz.",
     ziel: 1,
     xp: 100,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -654,7 +908,7 @@ const questFreitag = [
       "🎤 Wie würde dein Pokémon-Trainername heißen?",
     ziel: 1,
     xp: 125,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -662,7 +916,7 @@ const questFreitag = [
       "🎮 Welches Videospiel aus dem Store würdest du sofort kaufen, wenn es heute kostenlos wäre?",
     ziel: 1,
     xp: 150,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -670,7 +924,7 @@ const questFreitag = [
       "🎵 Welchen Song könntest du gerade immer wieder hören?",
     ziel: 1,
     xp: 175,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -678,7 +932,7 @@ const questFreitag = [
       "🎬 Wenn dein Leben ein Videospiel wäre, wie würde das Spiel heißen?",
     ziel: 1,
     xp: 200,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -686,7 +940,7 @@ const questFreitag = [
       "🐾 Wenn du ein Haustier aus einem Videospiel haben könntest, welches würdest du wählen?",
     ziel: 1,
     xp: 225,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -694,7 +948,7 @@ const questFreitag = [
       "🕹️ Nenne ein Videospiel, das du niemals langweilig findest.",
     ziel: 1,
     xp: 250,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -702,19 +956,23 @@ const questFreitag = [
       "🐾 Wenn dein Haustier ein Mensch wäre, welchen Beruf würde es haben?",
     ziel: 1,
     xp: 275,
-    typ: "text",
+    typ: "creative",
   },
 ];
 
+
+/* =====================================================
+   SAMSTAG
+===================================================== */
 
 const questSamstag = [
 
   {
     text:
-      "🎮 Nenne dein absolutes Lieblings-Videospiel und schreibe es in den Chat.",
+      "🎮 Nenne dein absolutes Lieblings-Videospiel.",
     ziel: 1,
     xp: 75,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -722,7 +980,7 @@ const questSamstag = [
       "🐶 Wenn du dir heute ein neues Haustier aussuchen könntest, welches Tier würdest du nehmen?",
     ziel: 1,
     xp: 100,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -730,7 +988,7 @@ const questSamstag = [
       "🎵 Schreibe den Titel deines Lieblingssongs in den Chat.",
     ziel: 1,
     xp: 125,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -738,7 +996,7 @@ const questSamstag = [
       "🎬 Welchen Film würdest du gerne noch einmal zum ersten Mal sehen können?",
     ziel: 1,
     xp: 150,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -746,7 +1004,7 @@ const questSamstag = [
       "🚗 GTA: Wenn du in GTA ein eigenes Fahrzeug bauen könntest, wie würde es aussehen?",
     ziel: 1,
     xp: 175,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -754,15 +1012,15 @@ const questSamstag = [
       "🚀 Wenn du für einen Tag ins Weltall fliegen könntest, was würdest du dort unbedingt machen?",
     ziel: 1,
     xp: 200,
-    typ: "text",
+    typ: "creative",
   },
 
   {
     text:
-      "👻 Du musst eine Nacht allein in einem verlassenen Haus verbringen. Was würdest du als Erstes mitnehmen?",
+      "👻 Du musst eine Nacht allein in einem verlassenen Haus verbringen. Was würdest du mitnehmen?",
     ziel: 1,
     xp: 225,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -770,7 +1028,7 @@ const questSamstag = [
       "🦸 Wenn du für einen Tag ein Superheld sein könntest, welche Superkraft würdest du wählen?",
     ziel: 1,
     xp: 250,
-    typ: "text",
+    typ: "creative",
   },
 
   {
@@ -778,22 +1036,32 @@ const questSamstag = [
       "🏖️ Du bekommst eine kostenlose Reise an jeden Ort der Welt. Wohin würdest du fliegen?",
     ziel: 1,
     xp: 275,
-    typ: "text",
+    typ: "creative",
   },
 
   {
     text:
-      "🎨 Erfinde einen Namen für einen eigenen Anime und schreibe ihn in den Chat.",
+      "🎨 Erfinde einen Namen für einen eigenen Anime.",
     ziel: 1,
     xp: 300,
-    typ: "text",
+    typ: "creative",
   },
 ];
 
 
-const questSonntag =
-  questTag1;
+/* =====================================================
+   SONNTAG
+===================================================== */
 
+const questSonntag = [
+
+  ...questMontag,
+];
+
+
+/* =====================================================
+   TAGESSET AUSWÄHLEN
+===================================================== */
 
 function tagesQuestSet() {
 
@@ -812,6 +1080,10 @@ function tagesQuestSet() {
     return questMittwoch;
   }
 
+  if (tag === 4) {
+    return questDonnerstag;
+  }
+
   if (tag === 5) {
     return questFreitag;
   }
@@ -820,13 +1092,13 @@ function tagesQuestSet() {
     return questSamstag;
   }
 
-  if (tag === 0) {
-    return questSonntag;
-  }
-
-  return questTag1;
+  return questSonntag;
 }
 
+
+/* =====================================================
+   BERLIN DATUM
+===================================================== */
 
 function berlinDatum() {
 
@@ -837,12 +1109,20 @@ function berlinDatum() {
         "Europe/Berlin",
 
       year: "numeric",
+
       month: "2-digit",
+
       day: "2-digit",
     }
-  ).format(new Date());
+  ).format(
+    new Date()
+  );
 }
 
+
+/* =====================================================
+   QUEST STATUS
+===================================================== */
 
 function persoenlicheQuestsHolen(
   username
@@ -891,6 +1171,10 @@ function persoenlicheQuestsHolen(
 }
 
 
+/* =====================================================
+   QUEST ANZEIGEN
+===================================================== */
+
 async function persoenlicheQuestAnzeigen(
   username
 ) {
@@ -900,39 +1184,35 @@ async function persoenlicheQuestAnzeigen(
       username
     );
 
-  const offene =
-    status.quests.filter(
-      q => !q.abgeschlossen
-    );
-
-  if (!offene.length) {
-
-    return (
-      `🎉 @${username} Alle 10 persönlichen Tagesquests sind erledigt! 🦊`
-    );
-  }
-
   const liste =
-    offene
-      .slice(0, 5)
+    status.quests
       .map(
-        (q, i) =>
-          `${i + 1}. ${q.text} ` +
-          `(${q.fortschritt}/${q.ziel}) ` +
-          `+${q.xp} XP`
+        (q, i) => {
+
+          const symbol =
+            q.abgeschlossen
+              ? "✅"
+              : "⬜";
+
+          return (
+            `${symbol} ${i + 1}. ` +
+            `${q.text} ` +
+            `(${q.fortschritt}/${q.ziel}) ` +
+            `+${q.xp} XP`
+          );
+        }
       )
       .join(" | ");
 
-  const rest =
-    offene.length > 5
-      ? ` … und ${offene.length - 5} weitere.`
-      : "";
-
   return (
-    `🎯 @${username} Deine Tagesquests: ${liste}${rest}`
+    `🎯 @${username} Tagesquests: ${liste}`
   );
 }
 
+
+/* =====================================================
+   QUEST PRÜFEN
+===================================================== */
 
 async function persoenlicheQuestPruefen(
   username,
@@ -942,17 +1222,40 @@ async function persoenlicheQuestPruefen(
   username =
     normalisieren(username);
 
+  const nachricht =
+    String(text || "").trim();
+
+  if (!nachricht) {
+    return;
+  }
+
+
+  /*
+     WICHTIG:
+
+     Befehle werden hier niemals
+     als persönliche Quest gezählt.
+  */
+
   if (
-    !text ||
-    !String(text).trim()
+    nachricht.startsWith("!")
   ) {
     return;
   }
+
 
   const status =
     persoenlicheQuestsHolen(
       username
     );
+
+
+  /*
+     NACHRICHTENQUESTS
+
+     Jede normale Chatnachricht
+     erhöht den Nachrichtenstand.
+  */
 
   for (
     const quest
@@ -976,38 +1279,71 @@ async function persoenlicheQuestPruefen(
           quest.fortschritt + 1
         );
 
-    } else {
+      if (
+        quest.fortschritt >=
+        quest.ziel
+      ) {
 
-      quest.fortschritt =
-        1;
-    }
+        quest.abgeschlossen =
+          true;
 
-    if (
-      quest.fortschritt >=
-      quest.ziel
-    ) {
+        await xpHinzufuegen(
+          username,
+          quest.xp
+        );
 
-      quest.fortschritt =
-        quest.ziel;
-
-      quest.abgeschlossen =
-        true;
-
-      await xpHinzufuegen(
-        username,
-        quest.xp
-      );
-
-      await streamelementsSenden(
-        `🎉 @${username} Tagesquest geschafft! ${quest.text} → +${quest.xp} XP 🦊`
-      );
+        await streamelementsSenden(
+          `🎉 @${username} Tagesquest geschafft! ${quest.text} → +${quest.xp} XP 🦊`
+        );
+      }
     }
   }
+
+
+  /*
+     KREATIVE QUESTS
+
+     PRO CHATNACHRICHT wird
+     HÖCHSTENS EINE kreative Quest
+     abgeschlossen.
+
+     Dadurch kann niemals eine
+     einzige Nachricht alle fünf
+     kreativen Quests abschließen.
+  */
+
+  const kreativeQuest =
+    status.quests.find(
+      q =>
+        !q.abgeschlossen &&
+        q.typ === "creative"
+    );
+
+  if (!kreativeQuest) {
+    return;
+  }
+
+
+  kreativeQuest.fortschritt = 1;
+
+  kreativeQuest.abgeschlossen =
+    true;
+
+
+  await xpHinzufuegen(
+    username,
+    kreativeQuest.xp
+  );
+
+
+  await streamelementsSenden(
+    `🎉 @${username} Tagesquest geschafft! ${kreativeQuest.text} → +${kreativeQuest.xp} XP 🦊`
+  );
 }
 
 
 /* =====================================================
-   RUDEL
+   RUDELWAHL
 ===================================================== */
 
 async function rudelwahl(
@@ -1016,7 +1352,9 @@ async function rudelwahl(
 ) {
 
   const key =
-    normalisieren(auswahl);
+    normalisieren(
+      auswahl
+    );
 
   const rudel =
     rudelMap[key];
@@ -1070,7 +1408,7 @@ async function rudelwahl(
 
 
 /* =====================================================
-   POKÉMON
+   POKÉMON WAHL
 ===================================================== */
 
 async function pokemonWahl(
@@ -1079,7 +1417,9 @@ async function pokemonWahl(
 ) {
 
   const user =
-    normalisieren(username);
+    normalisieren(
+      username
+    );
 
   const fest =
     eigenePokemon[user];
@@ -1108,6 +1448,7 @@ async function pokemonWahl(
     );
   }
 
+
   const pokemon =
     pokemonListe.find(
       p =>
@@ -1117,6 +1458,7 @@ async function pokemonWahl(
           .toLowerCase()
     );
 
+
   if (!pokemon) {
 
     return (
@@ -1124,12 +1466,14 @@ async function pokemonWahl(
     );
   }
 
+
   if (fest) {
 
     return (
       `@${username} ⚡ Dein festes Pokémon ist ${fest}.`
     );
   }
+
 
   try {
 
@@ -1179,7 +1523,9 @@ async function profil(
     );
 
   const xp =
-    Number(p.xp || 0);
+    Number(
+      p.xp || 0
+    );
 
   const level =
     Math.floor(
@@ -1206,7 +1552,7 @@ async function profil(
 
 
 /* =====================================================
-   PVP
+   PVP START
 ===================================================== */
 
 async function pvpStart(
@@ -1215,10 +1561,14 @@ async function pvpStart(
 ) {
 
   const angreifer =
-    normalisieren(username);
+    normalisieren(
+      username
+    );
 
   const verteidiger =
-    normalisieren(gegner);
+    normalisieren(
+      gegner
+    );
 
   if (
     !verteidiger ||
@@ -1230,6 +1580,7 @@ async function pvpStart(
     );
   }
 
+
   const a =
     await profilAnlegen(
       angreifer
@@ -1240,13 +1591,15 @@ async function pvpStart(
       verteidiger
     );
 
+
   const kampf = {
 
     angreifer,
 
     verteidiger,
 
-    typ: "rudel",
+    typ:
+      "rudel",
 
     angreiferRudel:
       a.rudel || "",
@@ -1265,26 +1618,21 @@ async function pvpStart(
       "",
   };
 
+
   offeneKaempfe.set(
     verteidiger,
     kampf
   );
 
+
   /*
-     FuchsMiss akzeptiert automatisch.
+     FuchsMiss akzeptiert
+     automatisch.
   */
 
   if (
     angreifer ===
-    "fuchsmissvegetalover2_0"
-  ) {
-
-    return kampfAnnehmen(
-      verteidiger
-    );
-  }
-
-  if (
+    "fuchsmissvegetalover2_0" ||
     verteidiger ===
     "fuchsmissvegetalover2_0"
   ) {
@@ -1294,6 +1642,7 @@ async function pvpStart(
     );
   }
 
+
   return (
     `⚔️ @${angreifer} fordert @${verteidiger} heraus! ` +
     `@${verteidiger} schreibe !annehmen`
@@ -1301,16 +1650,36 @@ async function pvpStart(
 }
 
 
+/* =====================================================
+   POKÉMON KAMPF
+===================================================== */
+
 async function pokemonKampfStart(
   username,
   gegner
 ) {
 
   const angreifer =
-    normalisieren(username);
+    normalisieren(
+      username
+    );
 
   const verteidiger =
-    normalisieren(gegner);
+    normalisieren(
+      gegner
+    );
+
+
+  if (
+    !verteidiger ||
+    angreifer === verteidiger
+  ) {
+
+    return (
+      `@${username} ❌ Ungültiger Gegner.`
+    );
+  }
+
 
   const a =
     await profilAnlegen(
@@ -1322,6 +1691,7 @@ async function pokemonKampfStart(
       verteidiger
     );
 
+
   const pokemonA =
     eigenePokemon[angreifer] ||
     a.pokemon;
@@ -1330,12 +1700,14 @@ async function pokemonKampfStart(
     eigenePokemon[verteidiger] ||
     v.pokemon;
 
+
   if (!pokemonA) {
 
     return (
       `@${username} ❌ Du hast noch kein Pokémon.`
     );
   }
+
 
   if (!pokemonV) {
 
@@ -1344,12 +1716,16 @@ async function pokemonKampfStart(
     );
   }
 
+
   offeneKaempfe.set(
     verteidiger,
     {
       angreifer,
+
       verteidiger,
-      typ: "pokemon",
+
+      typ:
+        "pokemon",
 
       angreiferRudel:
         a.rudel || "",
@@ -1365,6 +1741,7 @@ async function pokemonKampfStart(
     }
   );
 
+
   if (
     angreifer ===
     "fuchsmissvegetalover2_0" ||
@@ -1377,6 +1754,7 @@ async function pokemonKampfStart(
     );
   }
 
+
   return (
     `⚡ @${angreifer} fordert @${verteidiger} zum Pokémon-Kampf heraus! ` +
     `@${verteidiger} schreibe !annehmen`
@@ -1384,17 +1762,24 @@ async function pokemonKampfStart(
 }
 
 
+/* =====================================================
+   KAMPF ANNEHMEN
+===================================================== */
+
 async function kampfAnnehmen(
   username
 ) {
 
   const user =
-    normalisieren(username);
+    normalisieren(
+      username
+    );
 
   const kampf =
     offeneKaempfe.get(
       user
     );
+
 
   if (!kampf) {
 
@@ -1403,20 +1788,24 @@ async function kampfAnnehmen(
     );
   }
 
+
   offeneKaempfe.delete(
     user
   );
+
 
   const gewinner =
     Math.random() < 0.5
       ? kampf.angreifer
       : kampf.verteidiger;
 
+
   const verlierer =
     gewinner ===
     kampf.angreifer
       ? kampf.verteidiger
       : kampf.angreifer;
+
 
   aktuellerPvpKampf = {
 
@@ -1425,6 +1814,7 @@ async function kampfAnnehmen(
     gewinner,
   };
 
+
   try {
 
     await xpHinzufuegen(
@@ -1432,15 +1822,18 @@ async function kampfAnnehmen(
       100
     );
 
+
     const winnerProfil =
       await profilHolen(
         gewinner
       );
 
+
     const loserProfil =
       await profilHolen(
         verlierer
       );
+
 
     await supabase(
       `/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
@@ -1459,6 +1852,7 @@ async function kampfAnnehmen(
           }),
       }
     );
+
 
     await supabase(
       `/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
@@ -1486,6 +1880,7 @@ async function kampfAnnehmen(
     );
   }
 
+
   if (
     kampf.typ ===
     "pokemon"
@@ -1498,6 +1893,7 @@ async function kampfAnnehmen(
       `→ 🏆 @${gewinner} gewinnt +100 XP!`
     );
   }
+
 
   return (
     `⚔️ RUDEL-KAMPF! ` +
@@ -1518,6 +1914,7 @@ async function alleBefehle(
 
   return (
     `@${username} 🦊 Befehle: ` +
+    `!xp | ` +
     `!profil | ` +
     `!quest | ` +
     `!rudelwahl Feuer/Wasser/Wald/ICE | ` +
@@ -1532,7 +1929,7 @@ async function alleBefehle(
 
 
 /* =====================================================
-   CHAT
+   CHAT VERARBEITEN
 ===================================================== */
 
 async function chatVerarbeiten(
@@ -1546,6 +1943,7 @@ async function chatVerarbeiten(
     return;
   }
 
+
   if (
     message.topic !==
     "channel.chat.message"
@@ -1553,8 +1951,10 @@ async function chatVerarbeiten(
     return;
   }
 
+
   const data =
     message.data || {};
+
 
   const usernameRaw =
     data?.chatter_user_name ||
@@ -1564,14 +1964,17 @@ async function chatVerarbeiten(
     data?.username ||
     data?.user?.name;
 
+
   if (!usernameRaw) {
     return;
   }
+
 
   const username =
     normalisieren(
       usernameRaw
     );
+
 
   if (
     username ===
@@ -1580,6 +1983,7 @@ async function chatVerarbeiten(
     return;
   }
 
+
   const text =
     String(
       data?.message?.text ||
@@ -1587,19 +1991,152 @@ async function chatVerarbeiten(
       ""
     ).trim();
 
+
+  if (!text) {
+    return;
+  }
+
+
   console.log(
     `💬 ${username}: ${text}`
   );
 
 
-  /*
-     PVP
-  */
+  /* =================================================
+     !XP
+  ================================================= */
+
+  if (
+    /^!xp$/i.test(
+      text
+    )
+  ) {
+
+    await streamelementsSenden(
+      await xpAnzeigen(
+        username
+      )
+    );
+
+    return;
+  }
+
+
+  /* =================================================
+     !PROFIL
+  ================================================= */
+
+  if (
+    /^!profil$/i.test(
+      text
+    )
+  ) {
+
+    await streamelementsSenden(
+      await profil(
+        username
+      )
+    );
+
+    return;
+  }
+
+
+  /* =================================================
+     !QUEST
+  ================================================= */
+
+  if (
+    /^!quest$/i.test(
+      text
+    )
+  ) {
+
+    await streamelementsSenden(
+      await persoenlicheQuestAnzeigen(
+        username
+      )
+    );
+
+    return;
+  }
+
+
+  /* =================================================
+     !ALLEBEFEHLE
+  ================================================= */
+
+  if (
+    /^!allebefehle$/i.test(
+      text
+    )
+  ) {
+
+    await streamelementsSenden(
+      await alleBefehle(
+        username
+      )
+    );
+
+    return;
+  }
+
+
+  /* =================================================
+     !RUDELWAHL
+  ================================================= */
 
   let match =
     text.match(
+      /^!rudelwahl\s+(.+)$/i
+    );
+
+
+  if (match) {
+
+    await streamelementsSenden(
+      await rudelwahl(
+        username,
+        match[1]
+      )
+    );
+
+    return;
+  }
+
+
+  /* =================================================
+     !POKEMON
+  ================================================= */
+
+  match =
+    text.match(
+      /^!pokemon(?:\s+(.+))?$/i
+    );
+
+
+  if (match) {
+
+    await streamelementsSenden(
+      await pokemonWahl(
+        username,
+        match[1]
+      )
+    );
+
+    return;
+  }
+
+
+  /* =================================================
+     !PVP
+  ================================================= */
+
+  match =
+    text.match(
       /^!pvp\s+@?([a-zA-Z0-9_]+)$/i
     );
+
 
   if (match) {
 
@@ -1612,6 +2149,7 @@ async function chatVerarbeiten(
         );
 
       if (antwort) {
+
         await streamelementsSenden(
           antwort
         );
@@ -1633,14 +2171,15 @@ async function chatVerarbeiten(
   }
 
 
-  /*
-     POKÉMON-KAMPF
-  */
+  /* =================================================
+     !POKEKAMPF
+  ================================================= */
 
   match =
     text.match(
       /^!pokekampf\s+@?([a-zA-Z0-9_]+)$/i
     );
+
 
   if (match) {
 
@@ -1651,6 +2190,7 @@ async function chatVerarbeiten(
       );
 
     if (antwort) {
+
       await streamelementsSenden(
         antwort
       );
@@ -1660,9 +2200,9 @@ async function chatVerarbeiten(
   }
 
 
-  /*
-     ANNEHMEN
-  */
+  /* =================================================
+     !ANNEHMEN
+  ================================================= */
 
   if (
     /^!annehmen$/i.test(
@@ -1676,6 +2216,7 @@ async function chatVerarbeiten(
       );
 
     if (antwort) {
+
       await streamelementsSenden(
         antwort
       );
@@ -1685,118 +2226,30 @@ async function chatVerarbeiten(
   }
 
 
-  /*
-     PROFIL
-  */
+  /* =================================================
+     ANDERE BEFEHLE
+
+     Alle Nachrichten mit !
+     werden NICHT als persönliche
+     Quest gezählt.
+  ================================================= */
 
   if (
-    /^!profil$/i.test(
-      text
-    )
+    text.startsWith("!")
   ) {
-
-    await streamelementsSenden(
-      await profil(
-        username
-      )
-    );
-
     return;
   }
 
 
-  /*
-     RUDEL
-  */
-
-  match =
-    text.match(
-      /^!rudelwahl\s+(.+)$/i
-    );
-
-  if (match) {
-
-    await streamelementsSenden(
-      await rudelwahl(
-        username,
-        match[1]
-      )
-    );
-
-    return;
-  }
-
-
-  /*
-     POKÉMON
-  */
-
-  match =
-    text.match(
-      /^!pokemon(?:\s+(.+))?$/i
-    );
-
-  if (match) {
-
-    await streamelementsSenden(
-      await pokemonWahl(
-        username,
-        match[1]
-      )
-    );
-
-    return;
-  }
-
-
-  /*
-     TAGESQUESTS
-  */
-
-  if (
-    /^!quest$/i.test(
-      text
-    )
-  ) {
-
-    await streamelementsSenden(
-      await persoenlicheQuestAnzeigen(
-        username
-      )
-    );
-
-    return;
-  }
-
-
-  /*
-     ALLE BEFEHLE
-  */
-
-  if (
-    /^!allebefehle$/i.test(
-      text
-    )
-  ) {
-
-    await streamelementsSenden(
-      await alleBefehle(
-        username
-      )
-    );
-
-    return;
-  }
-
-
-  /*
+  /* =================================================
      NORMALE CHATNACHRICHT
-  */
+  ================================================= */
 
   await normaleQuestsPruefen(
     username,
     text
   );
+
 
   await persoenlicheQuestPruefen(
     username,
@@ -1864,7 +2317,6 @@ body {
   color: white;
 
   text-align: center;
-
 }
 
 .fighters {
@@ -2061,9 +2513,9 @@ const server =
 
       try {
 
-        /*
+        /* =============================================
            STARTSEITE
-        */
+        ============================================= */
 
         if (
           req.url ===
@@ -2086,9 +2538,9 @@ const server =
         }
 
 
-        /*
-           PVP
-        */
+        /* =============================================
+           PVP OVERLAY
+        ============================================= */
 
         if (
           req.url ===
@@ -2111,9 +2563,9 @@ const server =
         }
 
 
-        /*
+        /* =============================================
            PVP DATEN
-        */
+        ============================================= */
 
         if (
           req.url ===
@@ -2142,9 +2594,9 @@ const server =
         }
 
 
-        /*
+        /* =============================================
            404
-        */
+        ============================================= */
 
         res.writeHead(
           404,
@@ -2194,6 +2646,7 @@ function streamelementsVerbinden() {
     return;
   }
 
+
   if (
     ws &&
     (
@@ -2207,6 +2660,7 @@ function streamelementsVerbinden() {
 
     return;
   }
+
 
   const url =
     wsReconnectToken
@@ -2252,9 +2706,9 @@ function streamelementsVerbinden() {
           );
 
 
-        /*
+        /* ===========================================
            WELCOME
-        */
+        =========================================== */
 
         if (
           message.type ===
@@ -2263,6 +2717,7 @@ function streamelementsVerbinden() {
 
           wsReconnectToken =
             null;
+
 
           ws.send(
             JSON.stringify({
@@ -2299,9 +2754,9 @@ function streamelementsVerbinden() {
         }
 
 
-        /*
+        /* ===========================================
            RECONNECT
-        */
+        =========================================== */
 
         if (
           message.type ===
@@ -2320,9 +2775,9 @@ function streamelementsVerbinden() {
         }
 
 
-        /*
-           ERROR
-        */
+        /* ===========================================
+           FEHLER
+        =========================================== */
 
         if (
           message.type ===
@@ -2339,9 +2794,9 @@ function streamelementsVerbinden() {
         }
 
 
-        /*
+        /* ===========================================
            CHAT
-        */
+        =========================================== */
 
         await chatVerarbeiten(
           message
@@ -2366,11 +2821,13 @@ function streamelementsVerbinden() {
         "🔌 StreamElements WebSocket geschlossen."
       );
 
+
       if (
         wsReconnectTimer
       ) {
         return;
       }
+
 
       wsReconnectTimer =
         setTimeout(
@@ -2402,7 +2859,7 @@ function streamelementsVerbinden() {
 
 
 /* =====================================================
-   START
+   BOT STARTEN
 ===================================================== */
 
 server.listen(
@@ -2416,6 +2873,7 @@ server.listen(
     console.log(
       "🌐 PvP: /pvp"
     );
+
 
     try {
 
@@ -2433,6 +2891,7 @@ server.listen(
         error.message
       );
     }
+
 
     streamelementsVerbinden();
   }
