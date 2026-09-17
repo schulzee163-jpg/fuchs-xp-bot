@@ -4463,10 +4463,16 @@ function heartbeatStarten() {
         setTimeout(() => {
 
           if (!pongErhalten && ws && ws.readyState === WebSocket.OPEN) {
-            console.log("⚠️ StreamElements antwortet nicht – Verbindung wird automatisch neu aufgebaut.");
+            console.error(
+              "🚨 StreamElements antwortet nicht – Render wird zum automatischen Neustart beendet."
+            );
+
             try {
               ws.terminate();
             } catch {}
+
+            // Render startet den Dienst nach dem Prozessende automatisch neu.
+            process.exit(1);
           }
 
         }, 10000);
