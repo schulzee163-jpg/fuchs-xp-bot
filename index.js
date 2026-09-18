@@ -4318,6 +4318,26 @@ const server =
 
       try {
 
+        /* HEALTH CHECK */
+
+        if (
+          req.url === "/health"
+        ) {
+
+          res.writeHead(
+            200,
+            {
+              "Content-Type":
+                "text/plain; charset=utf-8"
+            }
+          );
+
+          res.end("ok");
+
+          return;
+        }
+
+
         /* START */
 
         if (
@@ -4630,6 +4650,9 @@ let reconnectToken =
 let reconnectTimer =
   null;
 
+let reconnectDelay =
+  5000;
+
 let heartbeatTimer =
   null;
 
@@ -4673,15 +4696,14 @@ function heartbeatStarten() {
 
           if (!pongErhalten && ws && ws.readyState === WebSocket.OPEN) {
             console.error(
-              "🚨 StreamElements antwortet nicht – Render wird zum automatischen Neustart beendet."
+              "🚨 StreamElements antwortet nicht – Verbindung wird neu aufgebaut."
             );
 
+            // Nur die StreamElements-Verbindung schließen.
+            // Der Render-Prozess bleibt laufen und verbindet automatisch neu.
             try {
               ws.terminate();
             } catch {}
-
-            // Render startet den Dienst nach dem Prozessende automatisch neu.
-            process.exit(1);
           }
 
         }, 10000);
@@ -4748,6 +4770,7 @@ function streamelementsVerbinden() {
 
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
+      reconnectDelay = 5000;
 
       heartbeatStarten();
 
@@ -4839,17 +4862,22 @@ function streamelementsVerbinden() {
       heartbeatStoppen();
 
       console.log(
-        "🔁 StreamElements getrennt – neuer Versuch in 5 Sekunden."
+        `🔁 StreamElements getrennt – neuer Versuch in ${Math.round(reconnectDelay / 1000)} Sekunden.`
       );
 
       clearTimeout(
         reconnectTimer
       );
 
+      const delay = reconnectDelay;
+
+      reconnectDelay =
+        Math.min(reconnectDelay * 2, 60000);
+
       reconnectTimer =
         setTimeout(
           streamelementsVerbinden,
-          5000
+          delay
         );
     }
   );
