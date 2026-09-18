@@ -3,7 +3,7 @@ import WebSocket from "ws";
 
 /* =========================================================
    🌍 MITSUSUNDWANDASWELT
-   🦊 FUCHSWELT BOT
+   🦊 FUCHSWELT BOT + FISCHEN & DORFBAU
    Twitch + StreamElements + Supabase + Render
 ========================================================= */
 
@@ -261,6 +261,122 @@ const markt = [
   ["Schlüssel des Geheimarchivs",2500,"rare"],
   ["Urfuchs-Krone",5000,"rare"]
 ];
+
+
+/* =========================================================
+   🎣 FISCHEN & FUNDSTÜCKE
+========================================================= */
+
+const angelFunde = [
+  { name: "🐟 Silberforelle", gewicht: 18, art: "fisch" },
+  { name: "🐠 Buntbarsch", gewicht: 16, art: "fisch" },
+  { name: "🐟 Goldkarpfen", gewicht: 7, art: "fisch", selten: true },
+  { name: "🦀 Flusskrabbe", gewicht: 12, art: "tier" },
+  { name: "🐙 Kleiner Wassergeist", gewicht: 5, art: "wesen", selten: true },
+  { name: "🪵 Treibholz", gewicht: 15, art: "material" },
+  { name: "🪨 Alter Baustein", gewicht: 13, art: "material" },
+  { name: "🌿 Wasserpflanze", gewicht: 12, art: "material" },
+  { name: "💎 Kristallsplitter", gewicht: 7, art: "material", selten: true },
+  { name: "🗺️ Alte Schatzkarte", gewicht: 3, art: "story", selten: true },
+  { name: "🗝️ Unterwasserschlüssel", gewicht: 2, art: "story", selten: true },
+  { name: "🌊 Wasser-Kristall", gewicht: 2, art: "story", selten: true },
+  { name: "🌟 Urfuchs-Splitter", gewicht: 1, art: "story", legendär: true }
+];
+
+const dorfBauten = {
+  angelsteg: {
+    name: "🎣 Angelsteg",
+    kosten: { "🪵 Treibholz": 5, "🪨 Alter Baustein": 3 }
+  },
+  kraeuterkueche: {
+    name: "🧪 Kräuterküche",
+    kosten: { "🪵 Treibholz": 4, "🌿 Wasserpflanze": 2 }
+  },
+  kristallwerkstatt: {
+    name: "🔮 Kristallwerkstatt",
+    kosten: { "🪨 Alter Baustein": 6, "💎 Kristallsplitter": 2 }
+  },
+  schatzkammer: {
+    name: "💎 Schatzkammer",
+    kosten: { "🪨 Alter Baustein": 8, "🪵 Treibholz": 4, "💎 Kristallsplitter": 3 }
+  },
+  geheimarchiv: {
+    name: "🔐 Geheimarchiv",
+    kosten: { "🗝️ Unterwasserschlüssel": 1, "💎 Kristallsplitter": 5 }
+  }
+};
+
+function fish(username) {
+  const w = spieler(username);
+
+  if (!w.inventar || typeof w.inventar !== "object") {
+    w.inventar = {};
+  }
+
+  const fund = angelFunde[zufall(0, angelFunde.length - 1)];
+  const bonus = zufall(5, 25);
+
+  inventarHinzufuegen(w, fund.name);
+  w.ruf += 1;
+
+  if (!w.entdeckungen.includes(fund.name)) {
+    w.entdeckungen.push(fund.name);
+  }
+
+  chronikEintrag(w, `Gefunden: ${fund.name}`);
+
+  if (fund.legendär) {
+    erfolgFreischalten(w, "Großer Schatz 5000");
+    titelAktualisieren(w);
+    return `🎣🌟 LEGENDÄR! @${username} hat ${fund.name} gefunden! x1 • Dieser Fund gehört zur Geschichte der Fuchswelt.`;
+  }
+
+  if (fund.selten) {
+    return `🎣✨ @${username} hat ${fund.name} gefunden! x1 • Ein seltener Fund für deine Fuchswelt.`;
+  }
+
+  if (fund.art === "fisch" || fund.art === "tier") {
+    return `🎣 @${username} hat ${fund.name} gefangen! x1 • +${bonus}🪙 Wert für spätere Verwendung/Verkauf.`;
+  }
+
+  return `🎣 @${username} hat ${fund.name} gefunden! x1 • Gut für deine Fuchswelt und den Ausbau deines Dorfes.`;
+}
+
+function bauen(username, projekt) {
+  const w = spieler(username);
+  const key = normalisieren(projekt).replace(/\s+/g, "");
+  const bau = dorfBauten[key];
+
+  if (!bau) {
+    return `🏗️ @${username} Mögliche Bauprojekte: ${Object.keys(dorfBauten).join(", ")}. Beispiel: !bauen angelsteg`;
+  }
+
+  if (!w.dorfBauten || typeof w.dorfBauten !== "object") {
+    w.dorfBauten = {};
+  }
+
+  if (w.dorfBauten[key]) {
+    return `🏡 @${username} ${bau.name} steht bereits in deinem Dorf.`;
+  }
+
+  const fehlend = Object.entries(bau.kosten)
+    .filter(([item, menge]) => (w.inventar[item] || 0) < menge)
+    .map(([item, menge]) => `${item} ${Math.max(0, menge - (w.inventar[item] || 0))}x`);
+
+  if (fehlend.length) {
+    return `🏗️ @${username} Für ${bau.name} fehlen: ${fehlend.join(" | ")}.`;
+  }
+
+  for (const [item, menge] of Object.entries(bau.kosten)) {
+    inventarEntfernen(w, item, menge);
+  }
+
+  w.dorfBauten[key] = true;
+  chronikEintrag(w, `Dorf gebaut: ${bau.name}`);
+
+  return `🏡✨ @${username} ${bau.name} wurde gebaut! Die benötigten Fundstücke wurden aus deinem Inventar genommen.`;
+}
+
 
 
 /* =========================================================
@@ -765,6 +881,8 @@ function neuerSpieler(username) {
 
     dekor: [],
 
+    dorfBauten: {},
+
     bank: 0,
 
     post: [],
@@ -1192,13 +1310,17 @@ async function profil(
 
 function dorf(username) {
 
+  const w = spieler(username);
+  const gebaut = Object.keys(w.dorfBauten || {});
+
   return (
     `🏡 MitsusundWandasWelt – Fuchsdorf! 🦊 ` +
     `🏠 Fuchsbau • 🏪 Fuchs-Markt • ` +
     `🎯 Abenteuer-Tafel • ⚔️ Kampfplatz • ` +
     `🐾 Begleiter-Haus • 🗺️ Weltkarte • ` +
     `🌟 Dorfplatz • 🔐 Geheimarchiv • ` +
-    `🌙 Tor der fünf Kräfte`
+    `🌙 Tor der fünf Kräfte` +
+    (gebaut.length ? ` | 🏗️ Gebaut: ${gebaut.join(", ")}` : ` | 🏗️ Noch keine eigenen Gebäude`)
   );
 }
 
@@ -2994,30 +3116,24 @@ function rudelWahl(
 
 function hilfe() {
 
-  return [
-    `🦊 MitsusundWandasWelt – HILFE 1/4: ` +
+  return (
+    `🦊 MitsusundWandasWelt: ` +
     `!profil !xp !quest !antwort ` +
-    `!dorf !bau !fuchsname !bauname ` +
-    `!markt !kaufen !inventar !inv !bank`,
-
-    `🦊 HILFE 2/4: ` +
+    `!dorf !bau !bauen !fish !fuchsname !bauname ` +
+    `!markt !kaufen !inventar !inv !bank ` +
     `!schenken !post !tausch ` +
     `!begleiter !begleiterinfo !begleiterwahl ` +
     `!begleiterfüttern !begleiterabenteuer ` +
-    `!begleiterfähigkeit !abenteuer !karte`,
-
-    `🦊 HILFE 3/4: ` +
+    `!begleiterfähigkeit !abenteuer !karte ` +
     `!entdeckungen !wesen !geheimnis !fuchsstatur ` +
     `!wetter !tor !erfolge !chronik !archiv ` +
     `!schicksal !rudel !rudelwahl !pokemon ` +
-    `!pokekampf !pvp !annehmen`,
-
-    `🦊 HILFE 4/4: ` +
+    `!pokekampf !pvp !annehmen ` +
     `!team !teamgründen !teameinladen ` +
     `!teambeitreten !teamverlassen !teamaufgaben ` +
     `!event !eventmitmachen !eventstatus ` +
     `!ruhmeshalle !legenden !fuchskern`
-  ];
+  );
 }
 
 
@@ -3489,6 +3605,38 @@ async function chatVerarbeiten(
       antwort =
         `🐾 @${username} Begleiter-Abenteuer: ` +
         `${w.begleiter[0].name} hat eine neue Spur entdeckt!`;
+    }
+
+
+    /* !FISH */
+
+    else if (
+      /^!fish$/i.test(
+        text.trim()
+      )
+    ) {
+
+      antwort =
+        fish(username);
+    }
+
+
+    /* !BAUEN */
+
+    else if (
+      /^!bauen(?:\s+(.+))?$/i.test(text)
+    ) {
+
+      match =
+        text.match(
+          /^!bauen(?:\s+(.+))?$/i
+        );
+
+      antwort =
+        bauen(
+          username,
+          match?.[1] || ""
+        );
     }
 
 
@@ -4061,21 +4209,6 @@ async function chatVerarbeiten(
 
 
     if (
-      Array.isArray(antwort)
-    ) {
-
-      for (
-        const nachricht of antwort
-      ) {
-
-        await streamelementsSenden(
-          nachricht
-        );
-
-      }
-
-    }
-    else if (
       antwort
     ) {
 
