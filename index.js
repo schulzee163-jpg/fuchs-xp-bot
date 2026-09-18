@@ -4625,77 +4625,25 @@ laden,
 
 
 /* =========================================================
-   📡 STREAMELEMENTS ASTRO WEBSOCKET
+   📡 STREAMELEMENTS ASTRO WEBSOCKET – ROBUST RECONNECT
 ========================================================= */
 
-let ws =
-  null;
+let ws = null;
+let reconnectToken = null;
+let reconnectTimer = null;
+let reconnectDelay = 5000;
+let heartbeatTimer = null;
+let heartbeatTimeout = null;
+let wsGeneration = 0;
+let usingReconnectToken = false;
+let wsLastPongAt = 0;
+let wsLastMessageAt = 0;
 
-let reconnectToken =
-  null;
-
-let reconnectTimer =
-  null;
-
-let reconnectDelay =
-  5000;
-
-let heartbeatTimer =
-  null;
-
-let heartbeatTimeout =
-  null;
-
-function heartbeatStarten() {
-
-  clearInterval(heartbeatTimer);
-  clearTimeout(heartbeatTimeout);
-
-  heartbeatTimer =
-    setInterval(() => {
-
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        return;
-      }
-
-      let pongErhalten = false;
-
-      const pongHandler = () => {
-        pongErhalten = true;
-      };
-
-      ws.once("pong", pongHandler);
-
-      try {
-        ws.ping();
-      } catch (error) {
-        console.error("❌ StreamElements Ping-Fehler:", error.message);
-        try {
-          ws.terminate();
-        } catch {}
-        return;
-      }
-
-      clearTimeout(heartbeatTimeout);
-
-      heartbeatTimeout =
-        setTimeout(() => {
-
-          if (!pongErhalten && ws && ws.readyState === WebSocket.OPEN) {
-            console.error(
-              "🚨 StreamElements antwortet nicht – Verbindung wird neu aufgebaut."
-            );
-
-            // Nur die StreamElements-Verbindung schließen.
-            // Der Render-Prozess bleibt laufen und verbindet automatisch neu.
-            try {
-              ws.terminate();
-            } catch {}
-          }
-
-        }, 10000);
-
-    }, 20000);
+function reconnectTimerStoppen() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
 }
 
 function heartbeatStoppen() {
@@ -4705,100 +4653,165 @@ function heartbeatStoppen() {
   heartbeatTimeout = null;
 }
 
+function heartbeatStarten(localWs) {
+  heartbeatStoppen();
+
+  wsLastPongAt = Date.now();
+
+  heartbeatTimer = setInterval(() => {
+    if (
+      !localWs ||
+      localWs !== ws ||
+      localWs.readyState !== WebSocket.OPEN
+    ) {
+      return;
+    }
+
+    let pongErhalten = false;
+
+    const pongHandler = () => {
+      pongErhalten = true;
+      wsLastPongAt = Date.now();
+    };
+
+    localWs.once("pong", pongHandler);
+
+    try {
+      localWs.ping();
+    } catch (error) {
+      console.error(
+        "❌ StreamElements Ping-Fehler:",
+        error.message
+      );
+
+      try {
+        localWs.terminate();
+      } catch {}
+
+      return;
+    }
+
+    clearTimeout(heartbeatTimeout);
+
+    heartbeatTimeout = setTimeout(() => {
+      if (
+        !pongErhalten &&
+        localWs === ws &&
+        localWs.readyState === WebSocket.OPEN
+      ) {
+        console.error(
+          "🚨 StreamElements antwortet nicht – Verbindung wird automatisch neu aufgebaut."
+        );
+
+        try {
+          localWs.terminate();
+        } catch {}
+      }
+    }, 10000);
+  }, 20000);
+}
+
+function reconnectPlanen(delay = reconnectDelay) {
+  if (reconnectTimer) {
+    return;
+  }
+
+  const wait = Math.max(1000, delay);
+
+  console.log(
+    `🔁 StreamElements: neuer Verbindungsversuch in ${Math.round(wait / 1000)} Sekunden.`
+  );
+
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    streamelementsVerbinden();
+  }, wait);
+
+  reconnectDelay = Math.min(reconnectDelay * 2, 60000);
+}
+
 function streamelementsVerbinden() {
-
-  if (
-    !STREAMELEMENTS_JWT
-  ) {
-
+  if (!STREAMELEMENTS_JWT) {
     console.error(
       "❌ STREAMELEMENTS_JWT fehlt."
     );
-
     return;
   }
 
   if (
     ws &&
     (
-      ws.readyState ===
-      WebSocket.OPEN ||
-      ws.readyState ===
-      WebSocket.CONNECTING
+      ws.readyState === WebSocket.OPEN ||
+      ws.readyState === WebSocket.CONNECTING
     )
   ) {
-
     return;
   }
 
-  const url =
-    reconnectToken
-      ? `wss://astro.streamelements.com/?reconnect_token=${encodeURIComponent(
-          reconnectToken
-        )}`
-      : "wss://astro.streamelements.com/";
+  const generation = ++wsGeneration;
+  const token = reconnectToken;
+
+  // Ein Reconnect-Token wird nur für genau einen Verbindungsversuch benutzt.
+  reconnectToken = null;
+  usingReconnectToken = Boolean(token);
+
+  const url = token
+    ? `wss://astro.streamelements.com/?reconnect_token=${encodeURIComponent(token)}`
+    : "wss://astro.streamelements.com/";
 
   console.log(
-    "🔌 Verbinde StreamElements WebSocket..."
+    token
+      ? "🔌 StreamElements: verbinde mit Reconnect-Token..."
+      : "🔌 StreamElements: neue WebSocket-Verbindung..."
   );
 
-  ws =
-    new WebSocket(
-      url
+  const localWs = new WebSocket(url);
+  ws = localWs;
+  wsLastMessageAt = Date.now();
+
+  localWs.on("open", () => {
+    if (generation !== wsGeneration || localWs !== ws) {
+      try {
+        localWs.close();
+      } catch {}
+      return;
+    }
+
+    console.log(
+      "✅ StreamElements WebSocket verbunden."
     );
 
-  ws.on(
-    "open",
-    () => {
+    reconnectTimerStoppen();
+    reconnectDelay = 5000;
+    heartbeatStarten(localWs);
+  });
 
-      console.log(
-        "✅ StreamElements WebSocket verbunden."
-      );
-
-      clearTimeout(reconnectTimer);
-      reconnectTimer = null;
-      reconnectDelay = 5000;
-
-      heartbeatStarten();
-
+  localWs.on("message", async raw => {
+    if (generation !== wsGeneration || localWs !== ws) {
+      return;
     }
-  );
 
-  ws.on(
-    "message",
-    async raw => {
+    wsLastMessageAt = Date.now();
 
-      try {
+    try {
+      const message = JSON.parse(raw.toString());
 
-        const message =
-          JSON.parse(
-            raw.toString()
+      if (message.type === "welcome") {
+        if (usingReconnectToken) {
+          console.log(
+            "♻️ StreamElements Reconnect erfolgreich – bestehende Abos wurden wiederhergestellt."
           );
 
-
-        if (
-          message.type ===
-          "welcome"
-        ) {
-
-          ws.send(
+          usingReconnectToken = false;
+        } else {
+          localWs.send(
             JSON.stringify({
-              type:
-                "subscribe",
-
-              nonce:
-                `fuchs-${Date.now()}`,
-
+              type: "subscribe",
+              nonce: `fuchs-${Date.now()}`,
               data: {
-
-                topic:
-                  "channel.chat.message",
-
-                token:
-                  STREAMELEMENTS_JWT,
-
-                token_type:
-                  "jwt"
+                topic: "channel.chat.message",
+                token: STREAMELEMENTS_JWT,
+                token_type: "jwt"
               }
             })
           );
@@ -4806,102 +4819,100 @@ function streamelementsVerbinden() {
           console.log(
             "📡 channel.chat.message abonniert."
           );
-
-          return;
         }
 
-
-        if (
-          message.type ===
-          "reconnect"
-        ) {
-
-          reconnectToken =
-            message?.data?.reconnect_token ||
-            null;
-
-          ws.close();
-
-          return;
-        }
-
-
-        await chatVerarbeiten(
-          message
-        );
-
-      } catch (error) {
-
-        console.error(
-          "❌ WebSocket Nachricht:",
-          error.message
-        );
-
+        return;
       }
 
-    }
-  );
+      if (message.type === "reconnect") {
+        const tokenNeu =
+          message?.data?.reconnect_token || null;
 
-  ws.on(
-    "close",
-    () => {
+        if (tokenNeu) {
+          reconnectToken = tokenNeu;
+        }
 
-      heartbeatStoppen();
+        usingReconnectToken = Boolean(tokenNeu);
 
-      console.log(
-        `🔁 StreamElements getrennt – neuer Versuch in ${Math.round(reconnectDelay / 1000)} Sekunden.`
-      );
-
-      clearTimeout(
-        reconnectTimer
-      );
-
-      const delay = reconnectDelay;
-
-      reconnectDelay =
-        Math.min(reconnectDelay * 2, 60000);
-
-      reconnectTimer =
-        setTimeout(
-          streamelementsVerbinden,
-          delay
+        console.log(
+          "♻️ StreamElements fordert einen kontrollierten Reconnect an."
         );
-    }
-  );
 
-  ws.on(
-    "error",
-    error => {
+        try {
+          localWs.close();
+        } catch {
+          try {
+            localWs.terminate();
+          } catch {}
+        }
 
+        return;
+      }
+
+      // Wichtig: Ein einzelner kaputter/langsamer Chat-Befehl darf die
+      // WebSocket-Verarbeitung niemals blockieren.
+      if (message.type === "message") {
+        void chatVerarbeiten(message).catch(error => {
+          console.error(
+            "❌ Chat-Verarbeitung:",
+            error.message
+          );
+        });
+      }
+    } catch (error) {
       console.error(
-        "❌ StreamElements WebSocket:",
+        "❌ WebSocket Nachricht:",
         error.message
       );
-
-      // 🛡️ Bei einem echten Socket-Fehler die Verbindung aktiv beenden.
-      // Das löst zuverlässig das vorhandene "close" aus, das nach 5 Sekunden
-      // automatisch eine neue StreamElements-Verbindung aufbaut.
-      try {
-        if (
-          ws &&
-          (
-            ws.readyState === WebSocket.OPEN ||
-            ws.readyState === WebSocket.CONNECTING
-          )
-        ) {
-          ws.terminate();
-        }
-      } catch (closeError) {
-        console.error(
-          "❌ StreamElements Verbindung schließen:",
-          closeError.message
-        );
-      }
-
     }
-  );
-}
+  });
 
+  localWs.on("close", (code, reason) => {
+    if (generation !== wsGeneration || localWs !== ws) {
+      return;
+    }
+
+    heartbeatStoppen();
+    ws = null;
+
+    const reasonText = reason?.toString?.() || "";
+
+    console.log(
+      `🔁 StreamElements getrennt (Code ${code}${reasonText ? `, ${reasonText}` : ""}).`
+    );
+
+    // Wenn ein kontrollierter Reconnect angekündigt wurde, verwenden wir
+    // den gespeicherten Token. Bei allen anderen Abbrüchen wird eine frische
+    // Verbindung aufgebaut und das Chat-Abo erneut gesetzt.
+    reconnectPlanen();
+  });
+
+  localWs.on("error", error => {
+    if (generation !== wsGeneration || localWs !== ws) {
+      return;
+    }
+
+    console.error(
+      "❌ StreamElements WebSocket:",
+      error.message
+    );
+
+    // close folgt normalerweise direkt danach und plant den Reconnect.
+    try {
+      if (
+        localWs.readyState === WebSocket.OPEN ||
+        localWs.readyState === WebSocket.CONNECTING
+      ) {
+        localWs.terminate();
+      }
+    } catch (closeError) {
+      console.error(
+        "❌ StreamElements Verbindung schließen:",
+        closeError.message
+      );
+    }
+  });
+}
 
 /* =========================================================
    🚀 START
