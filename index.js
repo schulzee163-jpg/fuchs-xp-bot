@@ -591,19 +591,6 @@ async function supabase(path, options = {}) {
   }
 }
 
-  const text =
-    await response.text();
-
-  if (!response.ok) {
-    throw new Error(
-      `Supabase ${response.status}: ${text}`
-    );
-  }
-
-  return text
-    ? JSON.parse(text)
-    : null;
-}
 
 async function rpc(
   name,
