@@ -537,26 +537,59 @@ async function supabase(path, options = {}) {
     );
   }
 
-  const response =
-    await fetch(
-      `${SUPABASE_URL}${path}`,
-      {
-        ...options,
+  const controller =
+    new AbortController();
 
-        headers: {
-          apikey:
-            SUPABASE_SERVICE_ROLE_KEY,
+  const timeout =
+    setTimeout(() => {
+      controller.abort();
+    }, 8000);
 
-          Authorization:
-            `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+  try {
 
-          "Content-Type":
-            "application/json",
+    const response =
+      await fetch(
+        `${SUPABASE_URL}${path}`,
+        {
+          ...options,
 
-          ...(options.headers || {})
+          signal:
+            options.signal || controller.signal,
+
+          headers: {
+            apikey:
+              SUPABASE_SERVICE_ROLE_KEY,
+
+            Authorization:
+              `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+
+            "Content-Type":
+              "application/json",
+
+            ...(options.headers || {})
+          }
         }
-      }
-    );
+      );
+
+    const text =
+      await response.text();
+
+    if (!response.ok) {
+      throw new Error(
+        `Supabase ${response.status}: ${text}`
+      );
+    }
+
+    return text
+      ? JSON.parse(text)
+      : null;
+
+  } finally {
+
+    clearTimeout(timeout);
+
+  }
+}
 
   const text =
     await response.text();
@@ -690,19 +723,32 @@ async function streamElementsChannelHolen() {
     return streamElementsChannel;
   }
 
-  const response =
-    await fetch(
-      "https://api.streamelements.com/kappa/v2/channels/me",
-      {
-        headers: {
-          Authorization:
-            `Bearer ${STREAMELEMENTS_JWT}`,
+  const controller =
+    new AbortController();
 
-          Accept:
-            "application/json"
+  const timeout =
+    setTimeout(() => {
+      controller.abort();
+    }, 8000);
+
+  try {
+
+    const response =
+      await fetch(
+        "https://api.streamelements.com/kappa/v2/channels/me",
+        {
+          signal:
+            controller.signal,
+
+          headers: {
+            Authorization:
+              `Bearer ${STREAMELEMENTS_JWT}`,
+
+            Accept:
+              "application/json"
+          }
         }
-      }
-    );
+      );
 
   const text =
     await response.text();
@@ -715,14 +761,20 @@ async function streamElementsChannelHolen() {
 
   }
 
-  const data =
-    JSON.parse(text);
+    const data =
+      JSON.parse(text);
 
-  streamElementsChannel =
-    data?._id ||
-    null;
+    streamElementsChannel =
+      data?._id ||
+      null;
 
-  return streamElementsChannel;
+    return streamElementsChannel;
+
+  } finally {
+
+    clearTimeout(timeout);
+
+  }
 }
 
 async function streamelementsSenden(
@@ -759,32 +811,53 @@ async function streamelementsSenden(
       return false;
     }
 
-    const response =
-      await fetch(
-        `https://api.streamelements.com/kappa/v2/bot/${encodeURIComponent(
-          channelId
-        )}/say`,
-        {
-          method: "POST",
+    const controller =
+      new AbortController();
 
-          headers: {
-            Authorization:
-              `Bearer ${STREAMELEMENTS_JWT}`,
+    const timeout =
+      setTimeout(() => {
+        controller.abort();
+      }, 8000);
 
-            "Content-Type":
-              "application/json",
+    let response;
 
-            Accept:
-              "application/json"
-          },
+    try {
 
-          body:
-            JSON.stringify({
-              message:
-                String(text).slice(0, 480)
-            })
-        }
-      );
+      response =
+        await fetch(
+          `https://api.streamelements.com/kappa/v2/bot/${encodeURIComponent(
+            channelId
+          )}/say`,
+          {
+            method: "POST",
+
+            signal:
+              controller.signal,
+
+            headers: {
+              Authorization:
+                `Bearer ${STREAMELEMENTS_JWT}`,
+
+              "Content-Type":
+                "application/json",
+
+              Accept:
+                "application/json"
+            },
+
+            body:
+              JSON.stringify({
+                message:
+                  String(text).slice(0, 480)
+              })
+          }
+        );
+
+    } finally {
+
+      clearTimeout(timeout);
+
+    }
 
     const body =
       await response.text();
@@ -3200,7 +3273,10 @@ async function chatVerarbeiten(
     `💬 ${username}: ${text}`
   );
 
-  await aktivitaetSpeichern(
+  // 🛡️ Die Aktivität darf niemals die Chat-Verarbeitung blockieren.
+  // Supabase läuft im Hintergrund; !quest, !fish, !inventar usw.
+  // werden sofort weiterverarbeitet.
+  void aktivitaetSpeichern(
     username
   );
 
