@@ -3171,6 +3171,509 @@ function rudelWahl(
 
 
 /* =========================================================
+   👁️ 03:17 – DIE WELT IST FALSCH
+   Integriert in die bestehende Fuchswelt.
+   Die bestehende Fuchswelt, Supabase und StreamElements
+   bleiben erhalten.
+========================================================= */
+
+const D0317_PLAYER =
+  normalisieren(process.env.D0317_PLAYER || "streamer");
+
+const D0317_ROOMS = [
+  "Patientenzimmer",
+  "Notaufnahme",
+  "Labor",
+  "Keller",
+  "OP",
+  "Archiv",
+  "Treppenhaus",
+  "Ausgang"
+];
+
+const D0317_CHARS = {
+  Alex: { hp: 100, sta: 100, ammo: 6 },
+  Mika: { hp: 100, sta: 125, ammo: 5 },
+  Sam: { hp: 95, sta: 100, ammo: 10 },
+  Nora: { hp: 125, sta: 95, ammo: 4 }
+};
+
+const d0317Spiele = new Map();
+
+function d0317ZeitText(minuten) {
+  const m = ((Number(minuten) || 0) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
+function d0317NeuesSpiel(player, char = "Alex") {
+  const c = D0317_CHARS[D0317_CHARS[char] ? char : "Alex"];
+
+  return {
+    player,
+    char: D0317_CHARS[char] ? char : "Alex",
+    hp: c.hp,
+    maxHp: c.hp,
+    sta: c.sta,
+    maxSta: c.sta,
+    bat: 5,
+    ammo: c.ammo,
+    key: 0,
+    med: 1,
+    danger: 0,
+    time: 197,
+    room: 1,
+    location: D0317_ROOMS[0],
+    hidden: false,
+    armed: false,
+    enemy: false,
+    enemyHP: 80,
+    flash: false,
+    ended: false,
+    visited: {},
+    eventCount: 0,
+    log: [
+      `[03:17] Du wachst um 03:17 Uhr auf. DU WARST SCHON EINMAL HIER.`
+    ],
+    story:
+      `03:17 Uhr. ${char}, du bist wach.<br><br>` +
+      `Finde den Schlüssel. Überlebe die Nacht. Finde den Ausgang.`
+  };
+}
+
+function d0317Spiel(player) {
+  const p = normalisieren(player) || D0317_PLAYER;
+
+  if (!d0317Spiele.has(p)) {
+    d0317Spiele.set(p, d0317NeuesSpiel(p));
+  }
+
+  return d0317Spiele.get(p);
+}
+
+function d0317Log(s, text) {
+  s.log.unshift(`[${d0317ZeitText(s.time)}] ${text}`);
+  s.log = s.log.slice(0, 40);
+}
+
+function d0317Zeit(s, minuten = 1) {
+  s.time = (s.time + minuten) % 1440;
+}
+
+function d0317Gefahr(s, n = 1) {
+  s.danger = Math.min(5, Math.max(0, s.danger + n));
+}
+
+function d0317Ausdauer(s, n) {
+  s.sta = Math.min(s.maxSta, Math.max(0, s.sta + n));
+}
+
+function d0317Verletzen(s, n) {
+  let schaden = Number(n) || 0;
+
+  if (s.hidden) {
+    schaden = Math.ceil(schaden / 2);
+  }
+
+  s.hp = Math.max(0, s.hp - schaden);
+
+  if (s.hp <= 0) {
+    s.ended = true;
+    s.story =
+      `💀 <span class="danger">Du bist zusammengebrochen.</span><br><br>` +
+      `Die Nacht war stärker als du.`;
+    d0317Log(s, "💀 Das Spiel ist vorbei.");
+  }
+}
+
+function d0317MonsterEvent(s) {
+  if (s.ended) {
+    return;
+  }
+
+  if (
+    s.danger >= 3 &&
+    Math.random() < 0.55
+  ) {
+    s.enemy = true;
+    s.enemyHP = 80;
+    d0317Log(s, "👹 Der Pfleger hat dich gefunden.");
+    s.story =
+      `👹 <span class="danger">Der Pfleger tritt aus dem Dunkeln.</span><br><br>` +
+      `Licht, Flucht oder Verstecken könnten dir helfen.`;
+    return;
+  }
+
+  if (Math.random() < 0.18) {
+    d0317Verletzen(s, 4);
+    d0317Log(s, "🩸 Ein Schock lässt dich stolpern.");
+  }
+}
+
+function d0317Gewinnen(s) {
+  s.ended = true;
+  s.story =
+    `🏆 <span class="good">Du hast den Ausgang erreicht!</span><br><br>` +
+    `Aber draußen steht jemand auf der anderen Straßenseite. ` +
+    `Er zeigt auf die Uhr: <b>03:17.</b>`;
+  d0317Log(s, "🏆 Ende 1: Flucht.");
+}
+
+function d0317Aktion(player, action, char = null) {
+  const s = d0317Spiel(player);
+
+  if (action === "reset") {
+    const neu = d0317NeuesSpiel(
+      s.player,
+      char && D0317_CHARS[char] ? char : s.char
+    );
+
+    d0317Spiele.set(
+      s.player,
+      neu
+    );
+
+    return neu;
+  }
+
+  if (s.ended) {
+    return s;
+  }
+
+  s.hidden = false;
+  d0317Zeit(s, 1);
+
+  switch (action) {
+    case "light": {
+      if (s.bat <= 0) {
+        s.story = "🔋 Die Taschenlampe ist leer.";
+        break;
+      }
+
+      s.bat--;
+      s.flash = true;
+      d0317Gefahr(s);
+      s.story =
+        `🔦 Der Lichtkegel schneidet durch die Dunkelheit.<br><br>` +
+        `Du erkennst Spuren am Boden.`;
+      d0317Log(s, "🔦 Licht eingeschaltet.");
+      d0317MonsterEvent(s);
+      break;
+    }
+
+    case "search": {
+      d0317Gefahr(s);
+      s.eventCount++;
+
+      const r = Math.random();
+
+      if (
+        !s.key &&
+        (s.room === 1 || s.room === 2 || r > 0.45)
+      ) {
+        s.key = 1;
+        s.story =
+          `🔑 Du findest einen alten Schlüssel. ` +
+          `Auf dem Metall steht: <b>03:17</b>.`;
+        d0317Log(s, "🔑 Schlüssel gefunden.");
+      } else if (r < 0.35) {
+        s.bat++;
+        s.story = "🔋 Du findest eine Batterie.";
+        d0317Log(s, "🔋 Batterie gefunden.");
+      } else if (r < 0.58) {
+        s.ammo += 2;
+        s.story = "🔫 Du findest 2 Patronen.";
+        d0317Log(s, "🔫 Munition gefunden.");
+      } else if (r < 0.72) {
+        s.med++;
+        s.story = "🩹 Ein Medikit liegt in einem Schrank.";
+        d0317Log(s, "🩹 Medikit gefunden.");
+      } else {
+        s.story =
+          `🔎 Du findest Blutspuren. ` +
+          `<span class="danger">Sie sind noch frisch.</span>`;
+        d0317Log(s, "🩸 Frische Blutspuren.");
+        d0317Gefahr(s);
+      }
+
+      d0317MonsterEvent(s);
+      break;
+    }
+
+    case "run": {
+      if (s.sta < 20) {
+        s.story = "😮‍💨 Du bist zu erschöpft zum Rennen.";
+        d0317Ausdauer(s, -5);
+        break;
+      }
+
+      d0317Ausdauer(s, -25);
+      d0317Gefahr(s, -1);
+      s.room = Math.min(8, s.room + 1);
+      s.location = D0317_ROOMS[s.room - 1];
+      s.flash = false;
+      s.story =
+        `🏃 Du rennst weiter und erreichst ` +
+        `<b>${s.location}</b>.<br><br>` +
+        `Hinter dir schlägt etwas gegen eine Tür.`;
+      d0317Log(s, `🏃 Weiter zu ${s.location}.`);
+      d0317MonsterEvent(s);
+      break;
+    }
+
+    case "hide": {
+      s.hidden = true;
+      d0317Gefahr(s, -1);
+      d0317Ausdauer(s, 8);
+      s.story =
+        `🙈 Du versteckst dich. Dein Atem ist laut.<br><br>` +
+        `<b>Die Schritte kommen näher …</b>`;
+      d0317Log(s, "🙈 Versteckt.");
+
+      if (s.enemy && Math.random() < 0.7) {
+        s.enemy = false;
+        d0317Log(s, "👹 Der Pfleger zieht weiter.");
+      }
+      break;
+    }
+
+    case "weapon": {
+      s.armed = true;
+      s.flash = true;
+
+      s.story =
+        s.ammo > 0
+          ? "🔫 Du ziehst die Waffe. <b>Die Kreatur ist irgendwo hier.</b>"
+          : "🔫 Die Waffe ist leer.";
+
+      d0317Log(s, "🔫 Waffe bereit.");
+
+      if (!s.enemy) {
+        d0317Gefahr(s);
+
+        if (Math.random() < 0.55) {
+          s.enemy = true;
+          s.enemyHP = 80;
+          d0317Log(s, "👹 Ein Gegner erscheint.");
+        }
+      }
+
+      break;
+    }
+
+    case "shoot": {
+      if (!s.armed) {
+        s.story =
+          "🔫 Du hast die Waffe noch nicht bereit.";
+        break;
+      }
+
+      if (s.ammo <= 0) {
+        s.story =
+          "🔫 <span class=\"danger\">Keine Munition!</span>";
+        break;
+      }
+
+      s.ammo--;
+
+      if (!s.enemy) {
+        s.story =
+          "💨 Du schießt ins Dunkel. <b>Nur ein Echo antwortet.</b>";
+        d0317Gefahr(s);
+        break;
+      }
+
+      s.enemyHP -= 40;
+
+      if (s.enemyHP <= 0) {
+        s.enemy = false;
+        d0317Gefahr(s, -2);
+        s.story =
+          `💥 Treffer! Der Pfleger verschwindet in der Dunkelheit.<br><br>` +
+          `<b>Der Weg ist frei.</b>`;
+        d0317Log(s, "💥 Gegner besiegt.");
+      } else {
+        s.story =
+          "💥 Treffer! <b>Aber er steht noch.</b>";
+        d0317Verletzen(s, 8);
+        d0317Log(s, "💥 Gegner getroffen.");
+      }
+
+      break;
+    }
+
+    case "door": {
+      if (s.room < 8) {
+        s.story =
+          `🚪 Diese Tür führt tiefer ins Gebäude.<br><br>` +
+          `<b>Vielleicht ist der Ausgang woanders.</b>`;
+        d0317Gefahr(s);
+        d0317MonsterEvent(s);
+      } else if (s.key && !s.enemy) {
+        d0317Gewinnen(s);
+      } else if (s.enemy) {
+        s.story =
+          `🚪 Der Ausgang ist direkt vor dir – ` +
+          `aber der Pfleger versperrt den Weg.`;
+        d0317Verletzen(s, 7);
+      } else {
+        s.story =
+          "🚪 Verschlossen. <b>Du brauchst den Schlüssel.</b>";
+      }
+
+      break;
+    }
+
+    case "heal": {
+      if (s.med <= 0) {
+        s.story = "🩹 Kein Medikit mehr.";
+        break;
+      }
+
+      if (s.hp >= s.maxHp) {
+        s.story =
+          "❤️ Du bist bereits bei voller Gesundheit.";
+        break;
+      }
+
+      s.med--;
+      s.hp = Math.min(s.maxHp, s.hp + 35);
+      s.story =
+        "🩹 Du verbindest deine Wunde. <b>+35 Leben.</b>";
+      d0317Log(s, "🩹 Medikit benutzt.");
+      break;
+    }
+
+    case "chaos": {
+      const actions = [
+        "light",
+        "search",
+        "run",
+        "hide",
+        "weapon"
+      ];
+
+      return d0317Aktion(
+        s.player,
+        actions[zufall(0, actions.length - 1)]
+      );
+    }
+
+    case "night": {
+      d0317Gefahr(s, 2);
+      s.story =
+        `🌙 <span class="danger">Die Nacht wird dunkler.</span><br><br>` +
+        `Etwas bewegt sich im Flur.`;
+      d0317Log(s, "🌙 Die Nacht wurde ausgelöst.");
+      d0317MonsterEvent(s);
+      break;
+    }
+
+    case "map": {
+      s.story =
+        `🗺️ <b>Krankenhaus:</b><br>` +
+        D0317_ROOMS
+          .map((room, i) => `${i + 1} ${room}`)
+          .join(" → ") +
+        `<br><br>Du bist bei <b>${s.location}</b>.`;
+      break;
+    }
+
+    default:
+      s.story = "❔ Unbekannte 03:17-Aktion.";
+  }
+
+  d0317Ausdauer(s, 3);
+
+  return s;
+}
+
+function d0317Antwort(
+  username,
+  text
+) {
+  const t = String(text || "").trim().toLowerCase();
+
+  const ziel =
+    D0317_PLAYER || normalisieren(username);
+
+  if (/^!(?:0317|317)$/i.test(t)) {
+    const s = d0317Spiel(ziel);
+
+    return (
+      `👁️ 03:17 ist aktiv für @${ziel}. ` +
+      `Ort: ${s.location} • Leben: ${s.hp}/${s.maxHp} • ` +
+      `Gefahr: ${s.danger}/5. ` +
+      `Befehle: !licht !suchen !rennen !verstecken ` +
+      `!waffe !schiessen !heilung !chaos !nacht`
+    );
+  }
+
+  const befehle = {
+    "!licht": "light",
+    "!suchen": "search",
+    "!rennen": "run",
+    "!verstecken": "hide",
+    "!waffe": "weapon",
+    "!schiessen": "shoot",
+    "!schießen": "shoot",
+    "!tür": "door",
+    "!heilung": "heal",
+    "!heilen": "heal",
+    "!chaos": "chaos",
+    "!nacht": "night",
+    "!weiter": "run",
+    "!317karte": "map"
+  };
+
+  const action = befehle[t];
+
+  if (!action) {
+    return null;
+  }
+
+  const s = d0317Aktion(ziel, action);
+
+  return (
+    `👁️ 03:17 @${username}: ${t} → ` +
+    `${s.location} | ❤️ ${s.hp}/${s.maxHp} | ` +
+    `⚡ ${s.sta} | 🔋 ${s.bat} | 🔫 ${s.ammo} | ` +
+    `Gefahr ${s.danger}/5` +
+    (s.enemy ? ` | 👹 DER PFLEGER DA!` : "")
+  );
+}
+
+function d0317JsonState(player) {
+  const s = d0317Spiel(player);
+
+  return {
+    player: s.player,
+    char: s.char,
+    hp: s.hp,
+    maxHp: s.maxHp,
+    sta: s.sta,
+    maxSta: s.maxSta,
+    bat: s.bat,
+    ammo: s.ammo,
+    key: s.key,
+    med: s.med,
+    danger: s.danger,
+    time: d0317ZeitText(s.time),
+    room: s.room,
+    rooms: D0317_ROOMS,
+    location: s.location,
+    hidden: s.hidden,
+    armed: s.armed,
+    enemy: s.enemy,
+    enemyHP: s.enemyHP,
+    ended: s.ended,
+    story: s.story,
+    log: s.log,
+    streamerTarget: D0317_PLAYER
+  };
+}
+
+
+/* =========================================================
    🧭 HILFE
 ========================================================= */
 
@@ -3277,8 +3780,11 @@ async function chatVerarbeiten(
     let match;
     let antwort = null;
 
+    const d0317AntwortText =
+      d0317Antwort(username, text);
 
     /* !XP */
+
 
     if (
       /^!xp$/i.test(text.trim())
@@ -4265,6 +4771,12 @@ async function chatVerarbeiten(
     }
 
 
+    else if (d0317AntwortText) {
+
+      antwort =
+        d0317AntwortText;
+    }
+
     else {
 
       return;
@@ -4299,11 +4811,150 @@ async function chatVerarbeiten(
    🌐 HTTP SERVER
 ========================================================= */
 
+async function d0317Body(req) {
+  return await new Promise((resolve, reject) => {
+    let body = "";
+
+    req.on("data", chunk => {
+      body += chunk.toString();
+
+      if (body.length > 100000) {
+        reject(new Error("Request body too large."));
+        try {
+          req.destroy();
+        } catch {}
+      }
+    });
+
+    req.on("end", () => {
+      if (!body.trim()) {
+        resolve({});
+        return;
+      }
+
+      try {
+        resolve(JSON.parse(body));
+      } catch {
+        reject(new Error("Ungültiges JSON."));
+      }
+    });
+
+    req.on("error", reject);
+  });
+}
+
+const D0317_HTML = "<!doctype html>\n<html lang=\"de\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no\">\n<title>03:17 – DIE WELT IST FALSCH</title>\n<style>\n:root{--bg:#05070a;--panel:#10141d;--panel2:#171c27;--line:#303746;--text:#f1f3f7;--muted:#9aa2b2;--danger:#ff5b62;--good:#69e0a0;--gold:#e6c56b}\n*{box-sizing:border-box}\nhtml,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif}\nbody{min-height:100vh}\n#app{max-width:1100px;margin:auto;min-height:100vh;background:linear-gradient(#080b11,#06080c)}\nheader{position:sticky;top:0;z-index:10;background:rgba(8,10,15,.96);backdrop-filter:blur(10px);padding:14px;border-bottom:1px solid var(--line)}\nh1{font-size:22px;margin:0 0 4px}\n.sub{color:var(--muted);font-size:13px}\nmain{padding:12px}\n.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:12px}\n.row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}\n.stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:9px;text-align:center}\n.stat b{display:block;font-size:18px;margin-top:3px}\n.label{font-size:11px;color:var(--muted)}\nbutton,input{font:inherit}\nbutton{color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:12px;min-height:48px;padding:9px 11px;font-weight:750}\nbutton:active{transform:scale(.98)}\n.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}\n.actions button{min-height:54px}\nbutton.red{border-color:#71363b}\n.story{font-size:16px;line-height:1.5;min-height:115px}\n.good{color:var(--good)}.danger{color:var(--danger)}.gold{color:var(--gold)}\ninput{width:100%;background:#0b0e14;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px}\n.selects{display:grid;grid-template-columns:1fr 1fr;gap:8px}\n.location{font-size:18px;font-weight:800}\n.bar{height:9px;background:#252a35;border-radius:20px;overflow:hidden;margin-top:5px}\n.fill{height:100%;width:0;background:#69e0a0;transition:.2s}\n#dangerFill{background:#ff5b62}\n.log{max-height:260px;overflow:auto;font-size:13px;line-height:1.45}\n.log div{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)}\n.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#1b2230;margin:2px}\n.small{font-size:12px;color:var(--muted)}\n@media(max-width:650px){.row{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:repeat(2,1fr)}.selects{grid-template-columns:1fr}}\n</style>\n</head>\n<body>\n<div id=\"app\">\n<header>\n  <h1>👁️ 03:17 – DIE WELT IST FALSCH</h1>\n  <div class=\"sub\">Integriert in MitsusundWandasWelt • Twitch-Chat steuert das Spiel live</div>\n</header>\n<main>\n  <section class=\"panel\">\n    <div class=\"selects\">\n      <div>\n        <div class=\"small\">Twitch-Spieler</div>\n        <input id=\"player\" placeholder=\"Twitch-Name\" value=\"streamer\">\n      </div>\n      <div>\n        <div class=\"small\">Charakter</div>\n        <select id=\"char\" style=\"width:100%;height:48px;background:#0b0e14;color:#fff;border:1px solid #303746;border-radius:12px;padding:0 10px\">\n          <option>Alex</option><option>Mika</option><option>Sam</option><option>Nora</option>\n        </select>\n      </div>\n    </div>\n    <div style=\"display:flex;gap:8px;margin-top:8px\">\n      <button style=\"flex:1\" onclick=\"startGame()\">▶️ Neues Spiel</button>\n      <button style=\"flex:1\" onclick=\"loadState()\">🔄 Aktualisieren</button>\n    </div>\n  </section>\n\n  <section class=\"panel\">\n    <div class=\"location\" id=\"location\">Patientenzimmer</div>\n    <div class=\"small\">Zimmer <span id=\"room\">1</span>/8 • Uhr <b id=\"clock\">03:17</b></div>\n    <div id=\"story\" class=\"story\" style=\"margin-top:10px\">Lade 03:17 …</div>\n  </section>\n\n  <section class=\"panel\">\n    <div class=\"row\">\n      <div class=\"stat\">❤️ Leben<b id=\"hp\">100</b></div>\n      <div class=\"stat\">⚡ Ausdauer<b id=\"sta\">100</b></div>\n      <div class=\"stat\">🔋 Batterie<b id=\"bat\">5</b></div>\n      <div class=\"stat\">🔫 Munition<b id=\"ammo\">6</b></div>\n    </div>\n    <div style=\"margin-top:8px\" class=\"small\">Gefahr: <b id=\"danger\">0/5</b></div>\n    <div class=\"bar\"><div id=\"dangerFill\" class=\"fill\"></div></div>\n    <div style=\"margin-top:8px\">\n      <span class=\"badge\">🔑 Schlüssel: <b id=\"key\">0</b></span>\n      <span class=\"badge\">🩹 Medikit: <b id=\"med\">1</b></span>\n      <span class=\"badge\" id=\"monsterBadge\">👹 Pfleger: nein</span>\n    </div>\n  </section>\n\n  <section class=\"panel actions\">\n    <button onclick=\"act('light')\">🔦 Licht</button>\n    <button onclick=\"act('search')\">🔎 Suchen</button>\n    <button onclick=\"act('run')\">🏃 Rennen</button>\n    <button onclick=\"act('hide')\">🙈 Verstecken</button>\n    <button onclick=\"act('weapon')\">🔫 Waffe</button>\n    <button onclick=\"act('shoot')\">💥 Schießen</button>\n    <button onclick=\"act('heal')\">🩹 Heilung</button>\n    <button onclick=\"act('door')\">🚪 Tür</button>\n    <button onclick=\"act('map')\">🗺️ Karte</button>\n    <button class=\"red\" onclick=\"act('chaos')\">🌀 Chaos</button>\n    <button class=\"red\" onclick=\"act('night')\">🌙 Nacht</button>\n    <button onclick=\"act('reset')\">↻ Neustart</button>\n  </section>\n\n  <section class=\"panel\">\n    <b>💬 Twitch-Steuerung</b>\n    <p class=\"small\">Im Twitch-Chat können Zuschauer das Spiel steuern:</p>\n    <div class=\"small\">\n      !licht • !suchen • !rennen • !verstecken • !waffe • !schiessen •\n      !heilung • !chaos • !nacht • !weiter • !317karte\n    </div>\n  </section>\n\n  <section class=\"panel\">\n    <b>📜 Ereignisse</b>\n    <div id=\"log\" class=\"log\" style=\"margin-top:8px\"></div>\n  </section>\n</main>\n</div>\n<script>\nconst $=id=>document.getElementById(id);\nlet timer=null;\n\nfunction player(){\n  return ($(\"player\").value||\"streamer\").trim().toLowerCase();\n}\n\nasync function api(path, options={}){\n  const r=await fetch(path,{\n    cache:\"no-store\",\n    ...options,\n    headers:{\n      \"Content-Type\":\"application/json\",\n      ...(options.headers||{})\n    }\n  });\n  if(!r.ok) throw new Error(\"HTTP \"+r.status);\n  return await r.json();\n}\n\nfunction render(s){\n  $(\"location\").textContent=s.location;\n  $(\"room\").textContent=s.room;\n  $(\"clock\").textContent=s.time;\n  $(\"hp\").textContent=s.hp+\"/\"+s.maxHp;\n  $(\"sta\").textContent=s.sta+\"/\"+s.maxSta;\n  $(\"bat\").textContent=s.bat;\n  $(\"ammo\").textContent=s.ammo;\n  $(\"danger\").textContent=s.danger+\"/5\";\n  $(\"dangerFill\").style.width=(s.danger*20)+\"%\";\n  $(\"key\").textContent=s.key;\n  $(\"med\").textContent=s.med;\n  $(\"monsterBadge\").textContent=s.enemy?\"👹 Pfleger: DA!\":\"👹 Pfleger: nein\";\n  $(\"story\").innerHTML=s.story;\n  $(\"log\").innerHTML=(s.log||[]).map(x=>\"<div>\"+escapeHtml(x)+\"</div>\").join(\"\");\n}\n\nfunction escapeHtml(x){\n  return String(x).replace(/[&<>\"']/g,m=>({\"&\":\"&amp;\",\"<\":\"&lt;\",\">\":\"&gt;\",'\"':\"&quot;\",\"'\":\"&#39;\"}[m]));\n}\n\nasync function loadState(){\n  try{\n    const s=await api(\"/0317-state?player=\"+encodeURIComponent(player()));\n    $(\"char\").value=s.char;\n    render(s);\n  }catch(e){\n    $(\"story\").textContent=\"⚠️ 03:17 konnte nicht geladen werden.\";\n  }\n}\n\nasync function act(action){\n  try{\n    const s=await api(\"/0317-action\",{\n      method:\"POST\",\n      body:JSON.stringify({player:player(),action})\n    });\n    render(s);\n  }catch(e){\n    $(\"story\").textContent=\"⚠️ Aktion konnte nicht ausgeführt werden.\";\n  }\n}\n\nasync function startGame(){\n  try{\n    const s=await api(\"/0317-action\",{\n      method:\"POST\",\n      body:JSON.stringify({\n        player:player(),\n        action:\"reset\",\n        char:$(\"char\").value\n      })\n    });\n    render(s);\n  }catch(e){\n    $(\"story\").textContent=\"⚠️ Neues Spiel konnte nicht gestartet werden.\";\n  }\n}\n\nloadState();\ntimer=setInterval(loadState,1000);\n</script>\n</body>\n</html>\n";
+
 const server =
   http.createServer(
     async (req, res) => {
 
       try {
+
+        /* 👁️ 03:17 – API / SPIEL */
+        const reqUrl =
+          new URL(
+            req.url,
+            "http://localhost"
+          );
+
+        if (
+          reqUrl.pathname === "/0317"
+        ) {
+
+          const html = D0317_HTML;
+
+          res.writeHead(
+            200,
+            {
+              "Content-Type":
+                "text/html; charset=utf-8",
+              "Cache-Control":
+                "no-store"
+            }
+          );
+
+          res.end(html);
+          return;
+        }
+
+        if (
+          reqUrl.pathname === "/0317-state" &&
+          req.method === "GET"
+        ) {
+
+          const player =
+            normalisieren(
+              reqUrl.searchParams.get("player") ||
+              D0317_PLAYER
+            );
+
+          res.writeHead(
+            200,
+            {
+              "Content-Type":
+                "application/json; charset=utf-8",
+              "Cache-Control":
+                "no-store"
+            }
+          );
+
+          res.end(
+            JSON.stringify(
+              d0317JsonState(player)
+            )
+          );
+
+          return;
+        }
+
+        if (
+          reqUrl.pathname === "/0317-action" &&
+          req.method === "POST"
+        ) {
+
+          const body =
+            await d0317Body(req);
+
+          const player =
+            normalisieren(
+              body.player ||
+              D0317_PLAYER
+            );
+
+          const action =
+            normalisieren(
+              body.action ||
+              ""
+            );
+
+          const s =
+            d0317Aktion(
+              player,
+              action,
+              body.char || null
+            );
+
+          res.writeHead(
+            200,
+            {
+              "Content-Type":
+                "application/json; charset=utf-8",
+              "Cache-Control":
+                "no-store"
+            }
+          );
+
+          res.end(
+            JSON.stringify(
+              d0317JsonState(
+                s.player
+              )
+            )
+          );
+
+          return;
+        }
 
         /* HEALTH CHECK */
 
