@@ -3183,8 +3183,8 @@ const FUCHS_TCG_KARTEN = [
   {id:"FW-004", name:"Eisdrache", rarity:"ULTRA", emoji:"❄️", hp:115, power:86, type:"Wesen", ability:"Eisatem"},
   {id:"FW-005", name:"Wassergeist", rarity:"RARE", emoji:"🌊", hp:95, power:74, type:"Wesen", ability:"Tiefenquelle"},
   {id:"FW-006", name:"Schattenfuchs", rarity:"RARE", emoji:"🌑", hp:90, power:79, type:"Wesen", ability:"Schattenlauf"},
-  {id:"FW-007", name:"Pikachu des Fuchsbau", rarity:"ULTRA", emoji:"⚡", hp:100, power:91, type:"Begleiter", ability:"Blitzsprung"},
-  {id:"FW-008", name:"Evoli", rarity:"RARE", emoji:"🦊", hp:85, power:70, type:"Begleiter", ability:"Wandelherz"},
+  {id:"FW-007", name:"Blitzpfote", rarity:"ULTRA", emoji:"⚡", hp:100, power:91, type:"Begleiter", ability:"Blitzsprung"},
+  {id:"FW-008", name:"Wandelfuchs", rarity:"RARE", emoji:"🦊", hp:85, power:70, type:"Begleiter", ability:"Wandelherz"},
   {id:"FW-009", name:"Fuchsbau", rarity:"UNCOMMON", emoji:"🏠", hp:80, power:52, type:"Ort", ability:"Sicherer Rückzug"},
   {id:"FW-010", name:"Großer Fuchsbau", rarity:"RARE", emoji:"🏰", hp:100, power:65, type:"Ort", ability:"Doppelter Schutz"},
   {id:"FW-011", name:"Schatzkammer", rarity:"UNCOMMON", emoji:"💎", hp:70, power:48, type:"Ort", ability:"Schatzfund"},
@@ -3202,6 +3202,97 @@ const FUCHS_TCG_KARTEN = [
   {id:"FW-023", name:"Fuchskern", rarity:"LEGENDÄR", emoji:"💜", hp:125, power:98, type:"Artefakt", ability:"Kern der Welt"},
   {id:"FW-024", name:"Schatten der 03:17", rarity:"SECRET", emoji:"👁️", hp:135, power:108, type:"Geheimnis", ability:"Die Welt ist falsch"}
 ];
+
+
+
+/* 🧩 ZUSÄTZLICHE KARTENSERIEN – reine Sammelkarten, keine Kämpfe */
+const FUCHS_TCG_EXTRA_SERIEN = [
+  {serie:"Nachtfuchs", code:"NF", cards:[
+    ["Mondschein-Fuchs","🌙","COMMON"],["Silberpfote","🦊","UNCOMMON"],["Schattenfuchs","🌑","RARE"],["Mondwald","🌲","UNCOMMON"],["Nachtlaterne","🏮","COMMON"],["Traumhüter","✨","ULTRA"],["Mondkristall","💎","RARE"],["Fuchs der Mitternacht","🌌","SECRET"]]},
+  {serie:"Drachenkarten", code:"DR", cards:[
+    ["Glutdrache","🐉","COMMON"],["Kristalldrache","💎","UNCOMMON"],["Sturmdrache","⚡","RARE"],["Walddrache","🌲","UNCOMMON"],["Frostdrache","❄️","RARE"],["Sternendrache","🌟","ULTRA"],["Uralter Drache","🔥","LEGENDÄR"],["Drachenthron","👑","SECRET"]]},
+  {serie:"Magierkarten", code:"MG", cards:[
+    ["Waldmagier","🧙","COMMON"],["Mondmagierin","🌙","UNCOMMON"],["Feuermagier","🔥","RARE"],["Kristallmagier","💎","UNCOMMON"],["Schattenmagier","🌑","RARE"],["Sternenmagier","✨","ULTRA"],["Meister der Runen","📜","LEGENDÄR"],["Der letzte Magier","🪄","SECRET"]]},
+  {serie:"Geisterkarten", code:"GE", cards:[
+    ["Kleiner Waldgeist","👻","COMMON"],["Flüstergeist","🌫️","UNCOMMON"],["Spiegelgeist","🪞","RARE"],["Geist der alten Tür","🚪","UNCOMMON"],["Nebelgeist","🌫️","RARE"],["Geisterkönig","👑","ULTRA"],["Seelenlicht","🕯️","LEGENDÄR"],["Der Geist um 03:17","👁️","SECRET"]]},
+  {serie:"Fantasykarten", code:"FA", cards:[
+    ["Zauberwald","🌳","COMMON"],["Kristallblume","🌸","UNCOMMON"],["Himmelsinsel","☁️","RARE"],["Einhornpfad","🦄","UNCOMMON"],["Feuerquelle","🔥","RARE"],["Sternenbrücke","🌉","ULTRA"],["Weltentor","🌀","LEGENDÄR"],["Das verlorene Reich","🏞️","SECRET"]]},
+  {serie:"Vampirkarten", code:"VA", cards:[
+    ["Nachtvampir","🧛","COMMON"],["Blutmond","🌕","UNCOMMON"],["Schloss der Nacht","🏰","RARE"],["Schattenumhang","🖤","UNCOMMON"],["Vampirjäger","🗡️","RARE"],["Mondgräfin","🌙","ULTRA"],["König der Nacht","👑","LEGENDÄR"],["Der ewige Vampir","🧛‍♂️","SECRET"]]},
+  {serie:"Feenkarten", code:"FE", cards:[
+    ["Waldfee","🧚","COMMON"],["Blütenfee","🌸","UNCOMMON"],["Mondfee","🌙","RARE"],["Kristallfee","💎","UNCOMMON"],["Sternenfee","✨","RARE"],["Traumfee","💫","ULTRA"],["Königin der Feen","👑","LEGENDÄR"],["Die letzte Fee","🧚‍♀️","SECRET"]]},
+  {serie:"Wolfskarten", code:"WO", cards:[
+    ["Waldwolf","🐺","COMMON"],["Silberwolf","🌙","UNCOMMON"],["Feuerwolf","🔥","RARE"],["Eiswolf","❄️","UNCOMMON"],["Schattenwolf","🌑","RARE"],["Sternenwolf","🌌","ULTRA"],["Alpha des Waldes","👑","LEGENDÄR"],["Urwolf","🐺","SECRET"]]},
+  {serie:"Katzenkarten", code:"KA", cards:[
+    ["Waldkatze","🐱","COMMON"],["Mondkatze","🌙","UNCOMMON"],["Kristallkatze","💎","RARE"],["Schattenkatze","🌑","UNCOMMON"],["Sternenkatze","🌟","RARE"],["Zauberkatze","✨","ULTRA"],["Königskatze","👑","LEGENDÄR"],["Die mystische Katze","🐈‍⬛","SECRET"]]},
+  {serie:"Weltraumkarten", code:"WS", cards:[
+    ["Kleiner Planet","🪐","COMMON"],["Mondstation","🌙","UNCOMMON"],["Nebelfuchs","🌌","RARE"],["Sternenschiff","🚀","UNCOMMON"],["Galaxietor","🌀","RARE"],["Kosmischer Fuchs","🌠","ULTRA"],["Hüter der Sterne","👑","LEGENDÄR"],["Das Ende des Universums","🌌","SECRET"]]},
+  {serie:"Mystische Burgen", code:"BU", cards:[
+    ["Altes Burgtor","🏰","COMMON"],["Mondburg","🌙","UNCOMMON"],["Kristallburg","💎","RARE"],["Geheimgang","🚪","UNCOMMON"],["Schattenburg","🌑","RARE"],["Himmelsburg","☁️","ULTRA"],["Königsburg","👑","LEGENDÄR"],["Die verlorene Burg","🏰","SECRET"]]},
+  {serie:"Unterwasserwelt", code:"UW", cards:[
+    ["Kleiner Fisch","🐟","COMMON"],["Korallenriff","🪸","UNCOMMON"],["Tiefseegeist","🌊","RARE"],["Muschelpalast","🐚","UNCOMMON"],["Leuchtqualle","🪼","RARE"],["Meeresdrache","🐉","ULTRA"],["Königin der Tiefe","👑","LEGENDÄR"],["Das versunkene Reich","🌊","SECRET"]]},
+  {serie:"Mystischer Wald", code:"MW", cards:[
+    ["Moosfuchs","🦊","COMMON"],["Leuchtpilz","🍄","UNCOMMON"],["Waldhüterin","🌲","RARE"],["Geheimpfad","🛤️","UNCOMMON"],["Baumgeist","🌳","RARE"],["Herz des Waldes","💚","ULTRA"],["Uralte Eiche","🌳","LEGENDÄR"],["Der Wald ohne Ende","🌲","SECRET"]]}
+];
+
+for (const serie of FUCHS_TCG_EXTRA_SERIEN) {
+  serie.cards.forEach((c, i) => {
+    const [name, emoji, rarity] = c;
+    FUCHS_TCG_KARTEN.push({
+      id:`${serie.code}-${String(i+1).padStart(3,"0")}`,
+      name, rarity, emoji,
+      hp:55 + i*10 + (rarity === "SECRET" ? 45 : rarity === "LEGENDÄR" ? 35 : rarity === "ULTRA" ? 25 : rarity === "RARE" ? 15 : rarity === "UNCOMMON" ? 8 : 0),
+      power:30 + i*8 + (rarity === "SECRET" ? 45 : rarity === "LEGENDÄR" ? 35 : rarity === "ULTRA" ? 25 : rarity === "RARE" ? 15 : rarity === "UNCOMMON" ? 8 : 0),
+      type:serie.serie,
+      serie:serie.serie,
+      ability:`${name} – Spezialmotiv`
+    });
+  });
+}
+
+const FUCHS_TCG_SERIEN = [
+  {key:"fuchswelt", name:"🦊 Fuchswelt-Karten", filter:"Fuchswelt"},
+  {key:"nachtfuchs", name:"🌙 Nachtfuchs-Serie", filter:"Nachtfuchs"},
+  {key:"drachen", name:"🐉 Drachenkarten", filter:"Drachenkarten"},
+  {key:"magier", name:"🧙 Magierkarten", filter:"Magierkarten"},
+  {key:"geister", name:"👻 Geisterkarten", filter:"Geisterkarten"},
+  {key:"fantasy", name:"🌸 Fantasykarten", filter:"Fantasykarten"},
+  {key:"vampire", name:"🧛 Vampirkarten", filter:"Vampirkarten"},
+  {key:"feen", name:"🧚 Feenkarten", filter:"Feenkarten"},
+  {key:"woelfe", name:"🐺 Wolfskarten", filter:"Wolfskarten"},
+  {key:"katzen", name:"🐱 Katzenkarten", filter:"Katzenkarten"},
+  {key:"weltraum", name:"🌌 Weltraumkarten", filter:"Weltraumkarten"},
+  {key:"burgen", name:"🏰 Mystische Burgen", filter:"Mystische Burgen"},
+  {key:"unterwasser", name:"🌊 Unterwasserwelt", filter:"Unterwasserwelt"},
+  {key:"mystischerwald", name:"🌲 Mystischer Wald", filter:"Mystischer Wald"}
+];
+
+const FUCHS_TCG_SERIEN_MAP = new Map(FUCHS_TCG_SERIEN.map(x => [x.key, x]));
+const FUCHS_TCG_ALIASE = new Map(FUCHS_TCG_SERIEN.map(x => [x.filter, x]));
+
+for (const k of FUCHS_TCG_KARTEN) { if (!k.serie) k.serie = "Fuchswelt"; }
+
+/* 🏆 SERIEN-BONUSKARTEN – werden nur bei vollständigen Serien vergeben */
+const FUCHS_TCG_SERIEN_BONUS = {
+  fuchswelt: {id:"BONUS-FW", name:"Meister der Fuchswelt", emoji:"👑", rarity:"SECRET", type:"Serienbonus", ability:"Die Fuchswelt ist vollständig gesammelt."},
+  nachtfuchs: {id:"BONUS-NF", name:"König des Nachtfuchses", emoji:"🌙", rarity:"SECRET", type:"Serienbonus", ability:"Die Nachtfuchs-Serie ist vollständig gesammelt."},
+  drachen: {id:"BONUS-DR", name:"Drachenthron", emoji:"🐉", rarity:"SECRET", type:"Serienbonus", ability:"Die Drachenserie ist vollständig gesammelt."},
+  magier: {id:"BONUS-MG", name:"Meister der Magie", emoji:"🧙", rarity:"SECRET", type:"Serienbonus", ability:"Die Magierserie ist vollständig gesammelt."},
+  geister: {id:"BONUS-GE", name:"Hüter der Geister", emoji:"👻", rarity:"SECRET", type:"Serienbonus", ability:"Die Geisterserie ist vollständig gesammelt."},
+  fantasy: {id:"BONUS-FA", name:"Herz der Fantasiewelt", emoji:"🌸", rarity:"SECRET", type:"Serienbonus", ability:"Die Fantasyserie ist vollständig gesammelt."},
+  vampire: {id:"BONUS-VA", name:"Thron der Nacht", emoji:"🧛", rarity:"SECRET", type:"Serienbonus", ability:"Die Vampirserie ist vollständig gesammelt."},
+  feen: {id:"BONUS-FE", name:"Feenkönigin", emoji:"🧚", rarity:"SECRET", type:"Serienbonus", ability:"Die Feenserie ist vollständig gesammelt."},
+  woelfe: {id:"BONUS-WO", name:"Rudel des Mondes", emoji:"🐺", rarity:"SECRET", type:"Serienbonus", ability:"Die Wolfserie ist vollständig gesammelt."},
+  katzen: {id:"BONUS-KA", name:"Mystische Katzenkönigin", emoji:"🐱", rarity:"SECRET", type:"Serienbonus", ability:"Die Katzenserie ist vollständig gesammelt."},
+  weltraum: {id:"BONUS-WS", name:"Hüter des Universums", emoji:"🌌", rarity:"SECRET", type:"Serienbonus", ability:"Die Weltraumserie ist vollständig gesammelt."},
+  burgen: {id:"BONUS-BU", name:"Herr der mystischen Burgen", emoji:"🏰", rarity:"SECRET", type:"Serienbonus", ability:"Die Burgenserie ist vollständig gesammelt."},
+  unterwasser: {id:"BONUS-UW", name:"Königreich der Tiefe", emoji:"🌊", rarity:"SECRET", type:"Serienbonus", ability:"Die Unterwasser-Serie ist vollständig gesammelt."},
+  mystischerwald: {id:"BONUS-MW", name:"Herz des mystischen Waldes", emoji:"🌲", rarity:"SECRET", type:"Serienbonus", ability:"Die Waldserie ist vollständig gesammelt."}
+};
+
+const FUCHS_TCG_MEISTERKARTE = {
+  id:"BONUS-MASTER", name:"Fuchswelt TCG Meisterkarte", emoji:"🦊👑", rarity:"SECRET", type:"Meisterbonus", ability:"Alle 14 Kartenserien wurden vollständig gesammelt."
+};
 
 const fuchsTcgSammlungen = new Map();
 
@@ -3273,8 +3364,9 @@ function fuchsTcgKarte(id) {
   return FUCHS_TCG_KARTEN.find(k => k.id === id) || null;
 }
 
-function fuchsTcgZufall(garantierteRaritaet = null) {
+function fuchsTcgZufall(garantierteRaritaet = null, serienfilter = null) {
   let pool = FUCHS_TCG_KARTEN;
+  if (serienfilter) pool = pool.filter(k => k.serie === serienfilter || k.type === serienfilter);
   if (garantierteRaritaet) pool = pool.filter(k => k.rarity === garantierteRaritaet);
   if (!pool.length) pool = FUCHS_TCG_KARTEN;
   const roll = Math.random() * 100;
@@ -3292,8 +3384,49 @@ function fuchsTcgZufall(garantierteRaritaet = null) {
 }
 
 function fuchsTcgSammeln(username, karte) {
-  const s = fuchsTcgSammlung(username);
+  const u = normalisieren(username);
+  const s = fuchsTcgSammlung(u);
   s.karten[karte.id] = Number(s.karten[karte.id] || 0) + 1;
+  return s.karten[karte.id];
+}
+
+function fuchsTcgSerienKarten(key) {
+  const serie = FUCHS_TCG_SERIEN_MAP.get(key);
+  if (!serie) return [];
+  return FUCHS_TCG_KARTEN.filter(k => k.serie === serie.filter || k.type === serie.filter);
+}
+
+function fuchsTcgSerieVollstaendig(s, key) {
+  const karten = fuchsTcgSerienKarten(key);
+  return karten.length > 0 && karten.every(k => Number(s.karten[k.id] || 0) > 0);
+}
+
+function fuchsTcgVollstaendigeSerien(s) {
+  return FUCHS_TCG_SERIEN.filter(serie => fuchsTcgSerieVollstaendig(s, serie.key));
+}
+
+function fuchsTcgBonusKarten(s) {
+  return Object.values(FUCHS_TCG_SERIEN_BONUS).filter(k => Number(s.karten[k.id] || 0) > 0);
+}
+
+async function fuchsTcgPruefeBelohnungen(username) {
+  const u = normalisieren(username);
+  const s = fuchsTcgSammlung(u);
+  const neue = [];
+  for (const serie of FUCHS_TCG_SERIEN) {
+    const bonus = FUCHS_TCG_SERIEN_BONUS[serie.key];
+    if (bonus && fuchsTcgSerieVollstaendig(s, serie.key) && !s.karten[bonus.id]) {
+      s.karten[bonus.id] = 1;
+      neue.push(`🏆 ${bonus.emoji} ${bonus.name}`);
+    }
+  }
+  const alleVollstaendig = FUCHS_TCG_SERIEN.every(serie => fuchsTcgSerieVollstaendig(s, serie.key));
+  if (alleVollstaendig && !s.karten[FUCHS_TCG_MEISTERKARTE.id]) {
+    s.karten[FUCHS_TCG_MEISTERKARTE.id] = 1;
+    neue.push(`👑 ${FUCHS_TCG_MEISTERKARTE.name}`);
+  }
+  if (neue.length) await fuchsTcgSpeichern(u);
+  return neue;
 }
 
 function fuchsTcgNaechsteZeit(nextOpenAt) {
@@ -3308,7 +3441,7 @@ function fuchsTcgNaechsteZeit(nextOpenAt) {
   return {datumText, restText:`${stunden} Std. ${minuten} Min. ${sekunden} Sek.`};
 }
 
-async function fuchsTcgBooster(username) {
+async function fuchsTcgBooster(username, serienfilter = null) {
   const u = normalisieren(username);
   const s = await fuchsTcgLaden(u);
   const jetzt = Date.now();
@@ -3319,18 +3452,24 @@ async function fuchsTcgBooster(username) {
   }
 
   // Genau EINE Karte pro Öffnung.
-  const karte = fuchsTcgZufall();
+  const karte = fuchsTcgZufall(null, serienfilter);
   fuchsTcgSammeln(u, karte);
   s.booster += 1;
   s.geoeffnet += 1;
   s.letzteOeffnung = jetzt;
   s.naechsteOeffnung = jetzt + 24 * 60 * 60 * 1000;
   await fuchsTcgSpeichern(u);
+  const belohnungen = await fuchsTcgPruefeBelohnungen(u);
   fuchsTcgLiveSetzen(u, karte);
 
   const t = fuchsTcgNaechsteZeit(s.naechsteOeffnung);
   const selten = ["ULTRA","LEGENDÄR","SECRET"].includes(karte.rarity);
-  return `🎁 @${u} hat eine Fuchswelt-TCG-Karte geöffnet! ${FUCHS_TCG_RARITY[karte.rarity].label} ${karte.id} ${karte.emoji} ${karte.name} [${karte.rarity}] • ${karte.type} • ❤️ ${karte.hp} • ⚔️ ${karte.power} • ✨ ${karte.ability}${selten ? " ✨ SELTENE KARTE!" : ""} ⏳ Nächste Karte: ${t.datumText} (in ${t.restText}).`;
+  const bonusText = belohnungen.length ? ` 🏆 Bonus freigeschaltet: ${belohnungen.join(" • ")}.` : "";
+  return `🎁 @${u} hat eine Karte geöffnet! ${karte.serie} • ${FUCHS_TCG_RARITY[karte.rarity].label} ${karte.id} ${karte.emoji} ${karte.name} [${karte.rarity}] • ❤️ ${karte.hp} • ⚔️ ${karte.power} • ✨ ${karte.ability}${selten ? " ✨ SELTENE KARTE!" : ""}${bonusText} ⏳ Nächste Karte: ${t.datumText} (in ${t.restText}).`;
+}
+
+function fuchsTcgSerienText() {
+  return FUCHS_TCG_SERIEN.map(s => `${s.name} = !${s.key}`).join(" • ");
 }
 
 async function fuchsTcgTimer(username) {
@@ -3345,14 +3484,35 @@ async function fuchsTcgTimer(username) {
 async function fuchsTcgAlbum(username) {
   const u = normalisieren(username);
   const s = await fuchsTcgLaden(u);
-  const gesammelt = Object.values(s.karten).reduce((a,b)=>a+Number(b||0),0);
-  const verschiedene = Object.keys(s.karten).length;
+  const gesammelt = Object.entries(s.karten).filter(([id]) => FUCHS_TCG_KARTEN.some(k => k.id === id)).reduce((a,[,b])=>a+Number(b||0),0);
+  const verschiedene = FUCHS_TCG_KARTEN.filter(k => s.karten[k.id]).length;
   const fehlend = Math.max(0, FUCHS_TCG_KARTEN.length - verschiedene);
+  const serien = fuchsTcgVollstaendigeSerien(s).length;
+  const bonus = fuchsTcgBonusKarten(s);
   const seltenheiten = ["SECRET","LEGENDÄR","ULTRA","RARE","UNCOMMON","COMMON"].map(r => {
     const anzahl = FUCHS_TCG_KARTEN.filter(k => k.rarity === r && s.karten[k.id]).length;
     return `${FUCHS_TCG_RARITY[r].label} ${r}: ${anzahl}`;
   }).join(" • ");
-  return `📖 @${u} TCG-Album: ${verschiedene}/${FUCHS_TCG_KARTEN.length} verschiedene Karten • ${gesammelt} Karten insgesamt • ${fehlend} fehlen noch. ${seltenheiten}`;
+  return `📖 @${u} TCG-Album: ${verschiedene}/${FUCHS_TCG_KARTEN.length} verschiedene Karten • ${gesammelt} Karten insgesamt • ${fehlend} fehlen noch • 🏆 ${serien}/${FUCHS_TCG_SERIEN.length} Serien komplett • 🎁 ${bonus.length} Bonuskarten. ${seltenheiten}`;
+}
+
+async function fuchsTcgStatus(username) {
+  const u = normalisieren(username);
+  const s = await fuchsTcgLaden(u);
+  const zeilen = FUCHS_TCG_SERIEN.map(serie => {
+    const karten = fuchsTcgSerienKarten(serie.key);
+    const count = karten.filter(k => s.karten[k.id]).length;
+    return `${serie.name} ${count}/${karten.length}${count === karten.length ? " 🏆" : ""}`;
+  });
+  const bonus = fuchsTcgBonusKarten(s);
+  const master = s.karten[FUCHS_TCG_MEISTERKARTE.id] ? " 👑 Meisterkarte erhalten!" : "";
+  return `📊 @${u} TCG-Fortschritt: ${zeilen.join(" • ")} • Bonuskarten: ${bonus.length}/${FUCHS_TCG_SERIEN.length}.${master}`;
+}
+
+async function fuchsTcgSerienListe(username) {
+  const u = normalisieren(username);
+  const s = await fuchsTcgLaden(u);
+  return `🃏 @${u} Serien: ${FUCHS_TCG_SERIEN.map(serie => { const k=fuchsTcgSerienKarten(serie.key); const c=k.filter(x=>s.karten[x.id]).length; return `${serie.name} ${c}/${k.length} = !${serie.key}`; }).join(" • ")}`;
 }
 
 async function fuchsTcgKarteInfo(username, such) {
@@ -3419,7 +3579,7 @@ async function load(){
   wrap.innerHTML='<div class="card" id="card">'
    +'<div class="top">🎁 FUCHSWELT TCG • NEUE KARTE</div>'
    +'<div class="art">'+c.emoji+'</div>'
-   +'<div class="id">'+c.id+'</div>'
+   +'<div class="id">'+c.id+' • '+(c.serie||c.type)+'</div>'
    +'<div class="name">'+c.name+'</div>'
    +'<div class="rarity">'+(c.rarity==='SECRET'?'🌟 SECRET':c.rarity==='LEGENDÄR'?'👑 LEGENDÄR':c.rarity==='ULTRA'?'💜 ULTRA':c.rarity==='RARE'?'💎 RARE':c.rarity==='UNCOMMON'?'⭐⭐ UNCOMMON':'⭐ COMMON')+'</div>'
    +'<div class="type">'+c.type+'</div>'
@@ -3434,7 +3594,7 @@ async function load(){
 load();setInterval(load,500);
 </script></body></html>`;
 
-const FUCHS_TCG_HTML = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fuchswelt TCG</title><style>body{margin:0;background:#08090d;color:#fff;font-family:system-ui,-apple-system,sans-serif}main{max-width:900px;margin:auto;padding:16px}.panel{background:#121621;border:1px solid #303746;border-radius:18px;padding:14px;margin-bottom:14px}input,button{font:inherit;border-radius:12px;padding:12px;border:1px solid #303746}input{background:#090c12;color:#fff;width:100%;box-sizing:border-box}button{background:#1b2230;color:#fff;font-weight:800;width:100%;margin-top:8px}.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.card{padding:14px;border-radius:16px;border:1px solid #42495a;background:linear-gradient(145deg,#191e2a,#0c0f16);min-height:170px}.art{font-size:48px;text-align:center}.id{color:#9aa2b2;font-size:12px}.name{font-size:18px;font-weight:900}.rarity{margin-top:4px}.stats{margin-top:10px;font-size:13px}.timer{font-weight:900;margin-top:10px}@media(min-width:700px){.cards{grid-template-columns:repeat(4,1fr)}}</style></head><body><main><div class="panel"><h1>🃏 Fuchswelt TCG</h1><p>Pro Zuschauer genau <b>1 Karte alle 24 Stunden</b>.</p><input id="p" value="streamer" placeholder="Twitch-Name"><button onclick="openB()">🎁 Eine Karte öffnen</button><button onclick="load()">🔄 Sammlung aktualisieren</button><div id="msg"></div><div id="timer" class="timer"></div></div><div class="panel"><b id="count">Album</b><div id="cards" class="cards"></div></div></main><script>const p=()=>encodeURIComponent((document.getElementById('p').value||'streamer').trim().toLowerCase());let nextOpen=0;async function openB(){const r=await fetch('/tcg-open',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:decodeURIComponent(p())})});const d=await r.json();document.getElementById('msg').textContent=d.message;nextOpen=Number(d.nextOpenAt||0);renderTimer();load()}async function load(){const d=await (await fetch('/tcg-data?player='+p())).json();document.getElementById('count').textContent='📖 Album '+d.collected+'/'+d.total+' verschiedene Karten';document.getElementById('cards').innerHTML=d.cards.map(k=>'<div class="card"><div class="art">'+k.emoji+'</div><div class="id">'+k.id+' • '+k.rarity+'</div><div class="name">'+k.name+'</div><div class="rarity">'+k.type+'</div><div class="stats">❤️ '+k.hp+' • ⚔️ '+k.power+'<br>✨ '+k.ability+'<br>Besitz: '+k.count+'x</div></div>').join('');nextOpen=Number(d.nextOpenAt||0);renderTimer()}function renderTimer(){const el=document.getElementById('timer');if(!nextOpen||nextOpen<=Date.now()){el.textContent='🟢 Jetzt kann eine Karte geöffnet werden!';return}const r=Math.max(0,nextOpen-Date.now()),h=Math.floor(r/3600000),m=Math.floor(r%3600000/60000),s=Math.floor(r%60000/1000),d=new Date(nextOpen);el.textContent='⏳ Nächste Karte: '+d.toLocaleString('de-DE',{dateStyle:'short',timeStyle:'medium'})+' • noch '+h+' Std. '+m+' Min. '+s+' Sek.'}load();setInterval(renderTimer,1000)</script></body></html>`;
+const FUCHS_TCG_HTML = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fuchswelt TCG</title><style>body{margin:0;background:#08090d;color:#fff;font-family:system-ui,-apple-system,sans-serif}main{max-width:900px;margin:auto;padding:16px}.panel{background:#121621;border:1px solid #303746;border-radius:18px;padding:14px;margin-bottom:14px}input,button{font:inherit;border-radius:12px;padding:12px;border:1px solid #303746}input{background:#090c12;color:#fff;width:100%;box-sizing:border-box}button{background:#1b2230;color:#fff;font-weight:800;width:100%;margin-top:8px}.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.card{padding:14px;border-radius:16px;border:1px solid #42495a;background:linear-gradient(145deg,#191e2a,#0c0f16);min-height:170px}.art{font-size:48px;text-align:center}.id{color:#9aa2b2;font-size:12px}.name{font-size:18px;font-weight:900}.rarity{margin-top:4px}.stats{margin-top:10px;font-size:13px}.timer{font-weight:900;margin-top:10px}@media(min-width:700px){.cards{grid-template-columns:repeat(4,1fr)}}</style></head><body><main><div class="panel"><h1>🃏 Fuchswelt TCG</h1><p>Pro Zuschauer genau <b>1 Karte alle 24 Stunden</b>.</p><input id="p" value="streamer" placeholder="Twitch-Name"><select id="serie"><option value="">🎁 Zufällige Serie</option><option value="fuchswelt">🦊 Fuchswelt</option><option value="nachtfuchs">🌙 Nachtfuchs</option><option value="drachen">🐉 Drachen</option><option value="magier">🧙 Magier</option><option value="geister">👻 Geister</option><option value="fantasy">🌸 Fantasy</option><option value="vampire">🧛 Vampire</option><option value="feen">🧚 Feen</option><option value="woelfe">🐺 Wölfe</option><option value="katzen">🐱 Katzen</option><option value="weltraum">🌌 Weltraum</option><option value="burgen">🏰 Burgen</option><option value="unterwasser">🌊 Unterwasser</option><option value="mystischerwald">🌲 Mystischer Wald</option></select><button onclick="openB()">🎁 Eine Karte öffnen</button><button onclick="load()">🔄 Sammlung aktualisieren</button><div id="msg"></div><div id="timer" class="timer"></div></div><div class="panel"><b id="count">Album</b><div id="cards" class="cards"></div></div></main><script>const p=()=>encodeURIComponent((document.getElementById('p').value||'streamer').trim().toLowerCase());let nextOpen=0;async function openB(){const r=await fetch('/tcg-open',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:decodeURIComponent(p()),serie:document.getElementById('serie').value})});const d=await r.json();document.getElementById('msg').textContent=d.message;nextOpen=Number(d.nextOpenAt||0);renderTimer();load()}async function load(){const d=await (await fetch('/tcg-data?player='+p())).json();document.getElementById('count').textContent='📖 Album '+d.collected+'/'+d.total+' verschiedene Karten';document.getElementById('cards').innerHTML=d.cards.map(k=>'<div class="card"><div class="art">'+k.emoji+'</div><div class="id">'+k.id+' • '+k.rarity+'</div><div class="name">'+k.name+'</div><div class="rarity">'+k.type+'</div><div class="stats">❤️ '+k.hp+' • ⚔️ '+k.power+'<br>✨ '+k.ability+'<br>Besitz: '+k.count+'x</div></div>').join('');nextOpen=Number(d.nextOpenAt||0);renderTimer()}function renderTimer(){const el=document.getElementById('timer');if(!nextOpen||nextOpen<=Date.now()){el.textContent='🟢 Jetzt kann eine Karte geöffnet werden!';return}const r=Math.max(0,nextOpen-Date.now()),h=Math.floor(r/3600000),m=Math.floor(r%3600000/60000),s=Math.floor(r%60000/1000),d=new Date(nextOpen);el.textContent='⏳ Nächste Karte: '+d.toLocaleString('de-DE',{dateStyle:'short',timeStyle:'medium'})+' • noch '+h+' Std. '+m+' Min. '+s+' Sek.'}load();setInterval(renderTimer,1000)</script></body></html>`;
 
 
 
@@ -5043,11 +5203,32 @@ async function chatVerarbeiten(
     /* 🃏 FUCHSWELT TCG */
 
     else if (/^!tcg$/i.test(text.trim())) {
-      antwort = `🃏 Fuchswelt TCG: !booster öffnet genau 1 Karte alle 24 Stunden • !tcgtimer zeigt die nächste Öffnungszeit • !album zeigt dein Album • !karten zeigt deine Sammlung • !karte FW-001 zeigt eine Karte.`;
+      antwort = `🃏 TCG: !booster = 1 zufällige Karte • 24h Timer pro Zuschauer • !tcgtimer • !album • !karten • !karte FW-001 • !serien zeigt alle Serien.`;
+    }
+
+    else if (/^!serien$/i.test(text.trim())) {
+      antwort = await fuchsTcgSerienListe(username);
+    }
+
+    else if (/^!tcgstatus$/i.test(text.trim())) {
+      antwort = await fuchsTcgStatus(username);
+    }
+
+    else if (/^!tcgmeister$/i.test(text.trim())) {
+      const s = await fuchsTcgLaden(username);
+      antwort = s.karten[FUCHS_TCG_MEISTERKARTE.id]
+        ? `👑 @${normalisieren(username)} Du besitzt bereits die Fuchswelt TCG Meisterkarte!`
+        : `👑 @${normalisieren(username)} Die Meisterkarte bekommst du, wenn du alle ${FUCHS_TCG_SERIEN.length} Serien vollständig sammelst.`;
     }
 
     else if (/^!booster$/i.test(text.trim())) {
       antwort = await fuchsTcgBooster(username);
+    }
+
+    else if (/^!(fuchswelt|nachtfuchs|drachen|magier|geister|fantasy|vampire|feen|woelfe|katzen|weltraum|burgen|unterwasser|mystischerwald)$/i.test(text.trim())) {
+      const key = text.trim().slice(1).toLowerCase();
+      const serie = FUCHS_TCG_SERIEN_MAP.get(key);
+      antwort = serie ? await fuchsTcgBooster(username, serie.filter) : await fuchsTcgBooster(username);
     }
 
     else if (/^!tcgtimer$/i.test(text.trim())) {
@@ -5180,7 +5361,7 @@ const server =
         if (reqUrl.pathname === "/tcg-open" && req.method === "POST") {
           const body = await d0317Body(req);
           const player = normalisieren(body.player || "streamer");
-          const message = await fuchsTcgBooster(player);
+          const message = await fuchsTcgBooster(player, body.serie ? (FUCHS_TCG_SERIEN_MAP.get(String(body.serie).toLowerCase())?.filter || null) : null);
           const s = await fuchsTcgLaden(player);
           const cards = FUCHS_TCG_KARTEN.map(k => ({...k, count:Number(s.karten[k.id] || 0)})).filter(k => k.count > 0);
           res.writeHead(200, {"Content-Type":"application/json; charset=utf-8", "Cache-Control":"no-store"});
