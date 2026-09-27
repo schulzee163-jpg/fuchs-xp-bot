@@ -3326,6 +3326,7 @@ async function fuchsTcgBooster(username) {
   s.letzteOeffnung = jetzt;
   s.naechsteOeffnung = jetzt + 24 * 60 * 60 * 1000;
   await fuchsTcgSpeichern(u);
+  fuchsTcgLiveSetzen(u, karte);
 
   const t = fuchsTcgNaechsteZeit(s.naechsteOeffnung);
   const selten = ["ULTRA","LEGENDÄR","SECRET"].includes(karte.rarity);
@@ -3371,6 +3372,67 @@ async function fuchsTcgListe(username) {
   const vorhanden = FUCHS_TCG_KARTEN.filter(k => s.karten[k.id]).slice(0,12).map(k => `${k.id} ${k.emoji}${Number(s.karten[k.id]) > 1 ? ` x${s.karten[k.id]}` : ""}`).join(" • ");
   return vorhanden ? `🃏 @${u} Deine Sammlung: ${vorhanden}` : `🃏 @${u} Deine Sammlung ist noch leer. Öffne mit !booster deine erste Karte!`;
 }
+
+/* =========================================================
+   📺 FUCHSWELT TCG – LIVE-KARTEN-OVERLAY
+   Zeigt eine gezogene Karte im Stream für 15 Sekunden.
+========================================================= */
+
+let fuchsTcgLive = null;
+
+function fuchsTcgLiveSetzen(username, karte) {
+  fuchsTcgLive = {
+    username: normalisieren(username),
+    karte: {...karte},
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 15000
+  };
+}
+
+const FUCHS_TCG_OVERLAY_HTML = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fuchswelt TCG Live Overlay</title><style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#fff}
+#wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.card{width:min(430px,82vw);padding:18px;border-radius:28px;background:linear-gradient(145deg,rgba(24,28,42,.98),rgba(8,10,16,.98));border:2px solid rgba(255,255,255,.35);box-shadow:0 18px 70px rgba(0,0,0,.55);text-align:center;opacity:0;transform:scale(.82) translateY(20px);transition:opacity .35s ease,transform .35s ease}
+.card.show{opacity:1;transform:scale(1) translateY(0)}
+.top{font-size:15px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;opacity:.9}
+.art{font-size:105px;line-height:1.05;margin:12px 0}
+.id{font-size:14px;opacity:.65}
+.name{font-size:32px;font-weight:950;margin-top:3px}
+.rarity{font-size:19px;font-weight:900;margin-top:6px}
+.type{font-size:15px;opacity:.8;margin-top:4px}
+.stats{display:flex;justify-content:center;gap:18px;font-size:17px;font-weight:850;margin-top:14px}
+.ability{font-size:14px;opacity:.9;margin-top:10px}
+.by{font-size:16px;font-weight:900;margin-top:14px}
+.secret{font-size:17px;font-weight:950;margin-top:9px}
+</style></head><body><div id="wrap"></div><script>
+let shownKey="";
+async function load(){
+ try{
+  const d=await (await fetch('/tcg-live',{cache:'no-store'})).json();
+  const wrap=document.getElementById('wrap');
+  if(!d.live){wrap.innerHTML='';shownKey='';return;}
+  const c=d.live.karte;
+  const key=d.live.createdAt+'-'+c.id+'-'+d.live.username;
+  if(key===shownKey)return;
+  shownKey=key;
+  const rare=['ULTRA','LEGENDÄR','SECRET'].includes(c.rarity);
+  wrap.innerHTML='<div class="card" id="card">'
+   +'<div class="top">🎁 FUCHSWELT TCG • NEUE KARTE</div>'
+   +'<div class="art">'+c.emoji+'</div>'
+   +'<div class="id">'+c.id+'</div>'
+   +'<div class="name">'+c.name+'</div>'
+   +'<div class="rarity">'+(c.rarity==='SECRET'?'🌟 SECRET':c.rarity==='LEGENDÄR'?'👑 LEGENDÄR':c.rarity==='ULTRA'?'💜 ULTRA':c.rarity==='RARE'?'💎 RARE':c.rarity==='UNCOMMON'?'⭐⭐ UNCOMMON':'⭐ COMMON')+'</div>'
+   +'<div class="type">'+c.type+'</div>'
+   +'<div class="stats"><span>❤️ '+c.hp+'</span><span>⚔️ '+c.power+'</span></div>'
+   +'<div class="ability">✨ '+c.ability+'</div>'
+   +'<div class="by">@'+d.live.username+' hat diese Karte gezogen!</div>'
+   +(rare?'<div class="secret">✨ SELTENE KARTE! ✨</div>':'')
+   +'</div>';
+  requestAnimationFrame(()=>document.getElementById('card')?.classList.add('show'));
+ }catch(e){}
+}
+load();setInterval(load,500);
+</script></body></html>`;
 
 const FUCHS_TCG_HTML = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fuchswelt TCG</title><style>body{margin:0;background:#08090d;color:#fff;font-family:system-ui,-apple-system,sans-serif}main{max-width:900px;margin:auto;padding:16px}.panel{background:#121621;border:1px solid #303746;border-radius:18px;padding:14px;margin-bottom:14px}input,button{font:inherit;border-radius:12px;padding:12px;border:1px solid #303746}input{background:#090c12;color:#fff;width:100%;box-sizing:border-box}button{background:#1b2230;color:#fff;font-weight:800;width:100%;margin-top:8px}.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.card{padding:14px;border-radius:16px;border:1px solid #42495a;background:linear-gradient(145deg,#191e2a,#0c0f16);min-height:170px}.art{font-size:48px;text-align:center}.id{color:#9aa2b2;font-size:12px}.name{font-size:18px;font-weight:900}.rarity{margin-top:4px}.stats{margin-top:10px;font-size:13px}.timer{font-weight:900;margin-top:10px}@media(min-width:700px){.cards{grid-template-columns:repeat(4,1fr)}}</style></head><body><main><div class="panel"><h1>🃏 Fuchswelt TCG</h1><p>Pro Zuschauer genau <b>1 Karte alle 24 Stunden</b>.</p><input id="p" value="streamer" placeholder="Twitch-Name"><button onclick="openB()">🎁 Eine Karte öffnen</button><button onclick="load()">🔄 Sammlung aktualisieren</button><div id="msg"></div><div id="timer" class="timer"></div></div><div class="panel"><b id="count">Album</b><div id="cards" class="cards"></div></div></main><script>const p=()=>encodeURIComponent((document.getElementById('p').value||'streamer').trim().toLowerCase());let nextOpen=0;async function openB(){const r=await fetch('/tcg-open',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:decodeURIComponent(p())})});const d=await r.json();document.getElementById('msg').textContent=d.message;nextOpen=Number(d.nextOpenAt||0);renderTimer();load()}async function load(){const d=await (await fetch('/tcg-data?player='+p())).json();document.getElementById('count').textContent='📖 Album '+d.collected+'/'+d.total+' verschiedene Karten';document.getElementById('cards').innerHTML=d.cards.map(k=>'<div class="card"><div class="art">'+k.emoji+'</div><div class="id">'+k.id+' • '+k.rarity+'</div><div class="name">'+k.name+'</div><div class="rarity">'+k.type+'</div><div class="stats">❤️ '+k.hp+' • ⚔️ '+k.power+'<br>✨ '+k.ability+'<br>Besitz: '+k.count+'x</div></div>').join('');nextOpen=Number(d.nextOpenAt||0);renderTimer()}function renderTimer(){const el=document.getElementById('timer');if(!nextOpen||nextOpen<=Date.now()){el.textContent='🟢 Jetzt kann eine Karte geöffnet werden!';return}const r=Math.max(0,nextOpen-Date.now()),h=Math.floor(r/3600000),m=Math.floor(r%3600000/60000),s=Math.floor(r%60000/1000),d=new Date(nextOpen);el.textContent='⏳ Nächste Karte: '+d.toLocaleString('de-DE',{dateStyle:'short',timeStyle:'medium'})+' • noch '+h+' Std. '+m+' Min. '+s+' Sek.'}load();setInterval(renderTimer,1000)</script></body></html>`;
 
@@ -5086,6 +5148,19 @@ const server =
             req.url,
             "http://localhost"
           );
+
+        if (reqUrl.pathname === "/tcg-overlay" && req.method === "GET") {
+          res.writeHead(200, {"Content-Type":"text/html; charset=utf-8", "Cache-Control":"no-store"});
+          res.end(FUCHS_TCG_OVERLAY_HTML);
+          return;
+        }
+
+        if (reqUrl.pathname === "/tcg-live" && req.method === "GET") {
+          const live = fuchsTcgLive && fuchsTcgLive.expiresAt > Date.now() ? fuchsTcgLive : null;
+          res.writeHead(200, {"Content-Type":"application/json; charset=utf-8", "Cache-Control":"no-store"});
+          res.end(JSON.stringify({live}));
+          return;
+        }
 
         if (reqUrl.pathname === "/tcg" && req.method === "GET") {
           res.writeHead(200, {"Content-Type":"text/html; charset=utf-8", "Cache-Control":"no-store"});
