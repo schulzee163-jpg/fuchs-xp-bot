@@ -3170,6 +3170,212 @@ function rudelWahl(
 }
 
 
+
+/* =========================================================
+   🃏 FUCHSWELT TCG – SAMMELKARTEN
+   Booster öffnen • 1 Karte alle 24 Stunden • dauerhaft in Supabase
+========================================================= */
+
+const FUCHS_TCG_KARTEN = [
+  {id:"FW-001", name:"FuchsmissVegetalover2_0", rarity:"SECRET", emoji:"🦊", hp:120, power:95, type:"Fuchs", ability:"Herz der Fuchswelt"},
+  {id:"FW-002", name:"Waldhüter", rarity:"LEGENDÄR", emoji:"🌲", hp:110, power:82, type:"Wesen", ability:"Wächter des Waldes"},
+  {id:"FW-003", name:"Flammenwolf", rarity:"ULTRA", emoji:"🔥", hp:105, power:88, type:"Wesen", ability:"Flammensturm"},
+  {id:"FW-004", name:"Eisdrache", rarity:"ULTRA", emoji:"❄️", hp:115, power:86, type:"Wesen", ability:"Eisatem"},
+  {id:"FW-005", name:"Wassergeist", rarity:"RARE", emoji:"🌊", hp:95, power:74, type:"Wesen", ability:"Tiefenquelle"},
+  {id:"FW-006", name:"Schattenfuchs", rarity:"RARE", emoji:"🌑", hp:90, power:79, type:"Wesen", ability:"Schattenlauf"},
+  {id:"FW-007", name:"Pikachu des Fuchsbau", rarity:"ULTRA", emoji:"⚡", hp:100, power:91, type:"Begleiter", ability:"Blitzsprung"},
+  {id:"FW-008", name:"Evoli", rarity:"RARE", emoji:"🦊", hp:85, power:70, type:"Begleiter", ability:"Wandelherz"},
+  {id:"FW-009", name:"Fuchsbau", rarity:"UNCOMMON", emoji:"🏠", hp:80, power:52, type:"Ort", ability:"Sicherer Rückzug"},
+  {id:"FW-010", name:"Großer Fuchsbau", rarity:"RARE", emoji:"🏰", hp:100, power:65, type:"Ort", ability:"Doppelter Schutz"},
+  {id:"FW-011", name:"Schatzkammer", rarity:"UNCOMMON", emoji:"💎", hp:70, power:48, type:"Ort", ability:"Schatzfund"},
+  {id:"FW-012", name:"Fuchswald", rarity:"COMMON", emoji:"🌳", hp:60, power:40, type:"Ort", ability:"Waldspur"},
+  {id:"FW-013", name:"Leuchtkristall", rarity:"RARE", emoji:"💠", hp:75, power:67, type:"Item", ability:"Leuchten"},
+  {id:"FW-014", name:"Mysteriöser Schlüssel", rarity:"UNCOMMON", emoji:"🔑", hp:65, power:45, type:"Item", ability:"Öffnet Geheimnisse"},
+  {id:"FW-015", name:"Fuchslaterne", rarity:"COMMON", emoji:"🏮", hp:55, power:35, type:"Item", ability:"Licht in der Nacht"},
+  {id:"FW-016", name:"Altes Fuchs-Kompass", rarity:"RARE", emoji:"🧭", hp:70, power:58, type:"Item", ability:"Findet Wege"},
+  {id:"FW-017", name:"Feuerrudel", rarity:"UNCOMMON", emoji:"🔥", hp:75, power:61, type:"Rudel", ability:"Rudelstärke"},
+  {id:"FW-018", name:"Wasserrudel", rarity:"UNCOMMON", emoji:"🌊", hp:75, power:60, type:"Rudel", ability:"Wellenruf"},
+  {id:"FW-019", name:"Waldrudel", rarity:"UNCOMMON", emoji:"🌲", hp:78, power:62, type:"Rudel", ability:"Naturkraft"},
+  {id:"FW-020", name:"ICErudel", rarity:"UNCOMMON", emoji:"🧊", hp:78, power:64, type:"Rudel", ability:"Eisruhe"},
+  {id:"FW-021", name:"Ur-Fuchs", rarity:"LEGENDÄR", emoji:"🌌", hp:140, power:100, type:"Legende", ability:"Erbe des Urfuchses"},
+  {id:"FW-022", name:"Das fünfte Fragment", rarity:"SECRET", emoji:"🌙", hp:130, power:110, type:"Geheimnis", ability:"Erwachen"},
+  {id:"FW-023", name:"Fuchskern", rarity:"LEGENDÄR", emoji:"💜", hp:125, power:98, type:"Artefakt", ability:"Kern der Welt"},
+  {id:"FW-024", name:"Schatten der 03:17", rarity:"SECRET", emoji:"👁️", hp:135, power:108, type:"Geheimnis", ability:"Die Welt ist falsch"}
+];
+
+const fuchsTcgSammlungen = new Map();
+
+const FUCHS_TCG_RARITY = {
+  COMMON: {label:"⭐", weight:55},
+  UNCOMMON: {label:"⭐⭐", weight:28},
+  RARE: {label:"💎", weight:12},
+  ULTRA: {label:"💜", weight:4},
+  LEGENDÄR: {label:"👑", weight:0.8},
+  SECRET: {label:"🌟", weight:0.2}
+};
+
+function fuchsTcgSammlung(username) {
+  const u = normalisieren(username);
+  if (!fuchsTcgSammlungen.has(u)) {
+    fuchsTcgSammlungen.set(u, {karten:{}, booster:0, geoeffnet:0, letzteOeffnung:0, naechsteOeffnung:0});
+  }
+  return fuchsTcgSammlungen.get(u);
+}
+
+async function fuchsTcgLaden(username) {
+  const u = normalisieren(username);
+  const lokal = fuchsTcgSammlung(u);
+  try {
+    const rows = await supabase(
+      `/rest/v1/fuchs_tcg_sammlungen?spieler=eq.${encodeURIComponent(u)}&limit=1`
+    );
+    if (rows?.[0]) {
+      lokal.karten = rows[0].karten && typeof rows[0].karten === "object" ? rows[0].karten : {};
+      lokal.booster = Number(rows[0].booster || 0);
+      lokal.geoeffnet = Number(rows[0].geoeffnet || 0);
+      lokal.letzteOeffnung = rows[0].letzte_oeffnung ? new Date(rows[0].letzte_oeffnung).getTime() : 0;
+      lokal.naechsteOeffnung = rows[0].naechste_oeffnung ? new Date(rows[0].naechste_oeffnung).getTime() : 0;
+    }
+  } catch (error) {
+    console.error("❌ TCG Supabase laden:", error.message);
+  }
+  return lokal;
+}
+
+async function fuchsTcgSpeichern(username) {
+  const u = normalisieren(username);
+  const s = fuchsTcgSammlung(u);
+  try {
+    await supabase(
+      `/rest/v1/fuchs_tcg_sammlungen?on_conflict=spieler`,
+      {
+        method:"POST",
+        headers:{Prefer:"resolution=merge-duplicates"},
+        body:JSON.stringify({
+          spieler:u,
+          karten:s.karten,
+          booster:Number(s.booster || 0),
+          geoeffnet:Number(s.geoeffnet || 0),
+          letzte_oeffnung:s.letzteOeffnung ? new Date(s.letzteOeffnung).toISOString() : null,
+          naechste_oeffnung:s.naechsteOeffnung ? new Date(s.naechsteOeffnung).toISOString() : null,
+          updated_at:new Date().toISOString()
+        })
+      }
+    );
+    return true;
+  } catch (error) {
+    console.error("❌ TCG Supabase speichern:", error.message);
+    return false;
+  }
+}
+
+function fuchsTcgKarte(id) {
+  return FUCHS_TCG_KARTEN.find(k => k.id === id) || null;
+}
+
+function fuchsTcgZufall(garantierteRaritaet = null) {
+  let pool = FUCHS_TCG_KARTEN;
+  if (garantierteRaritaet) pool = pool.filter(k => k.rarity === garantierteRaritaet);
+  if (!pool.length) pool = FUCHS_TCG_KARTEN;
+  const roll = Math.random() * 100;
+  let rarity = "COMMON";
+  if (!garantierteRaritaet) {
+    if (roll < 0.2) rarity = "SECRET";
+    else if (roll < 1.0) rarity = "LEGENDÄR";
+    else if (roll < 5.0) rarity = "ULTRA";
+    else if (roll < 17.0) rarity = "RARE";
+    else if (roll < 45.0) rarity = "UNCOMMON";
+  }
+  const rpool = pool.filter(k => k.rarity === rarity);
+  const aus = rpool.length ? rpool : pool;
+  return aus[Math.floor(Math.random() * aus.length)];
+}
+
+function fuchsTcgSammeln(username, karte) {
+  const s = fuchsTcgSammlung(username);
+  s.karten[karte.id] = Number(s.karten[karte.id] || 0) + 1;
+}
+
+function fuchsTcgNaechsteZeit(nextOpenAt) {
+  const datum = new Date(nextOpenAt);
+  const datumText = new Intl.DateTimeFormat("de-DE", {
+    timeZone:"Europe/Berlin", dateStyle:"short", timeStyle:"medium"
+  }).format(datum);
+  const restMs = Math.max(0, nextOpenAt - Date.now());
+  const stunden = Math.floor(restMs / 3600000);
+  const minuten = Math.floor((restMs % 3600000) / 60000);
+  const sekunden = Math.floor((restMs % 60000) / 1000);
+  return {datumText, restText:`${stunden} Std. ${minuten} Min. ${sekunden} Sek.`};
+}
+
+async function fuchsTcgBooster(username) {
+  const u = normalisieren(username);
+  const s = await fuchsTcgLaden(u);
+  const jetzt = Date.now();
+  const naechsteOeffnung = Number(s.naechsteOeffnung || 0);
+  if (naechsteOeffnung > jetzt) {
+    const t = fuchsTcgNaechsteZeit(naechsteOeffnung);
+    return `⏳ @${u} Du hast bereits eine Karte geöffnet. Die nächste Karte kann am ${t.datumText} geöffnet werden. Noch ${t.restText}.`;
+  }
+
+  // Genau EINE Karte pro Öffnung.
+  const karte = fuchsTcgZufall();
+  fuchsTcgSammeln(u, karte);
+  s.booster += 1;
+  s.geoeffnet += 1;
+  s.letzteOeffnung = jetzt;
+  s.naechsteOeffnung = jetzt + 24 * 60 * 60 * 1000;
+  await fuchsTcgSpeichern(u);
+
+  const t = fuchsTcgNaechsteZeit(s.naechsteOeffnung);
+  const selten = ["ULTRA","LEGENDÄR","SECRET"].includes(karte.rarity);
+  return `🎁 @${u} hat eine Fuchswelt-TCG-Karte geöffnet! ${FUCHS_TCG_RARITY[karte.rarity].label} ${karte.id} ${karte.emoji} ${karte.name} [${karte.rarity}] • ${karte.type} • ❤️ ${karte.hp} • ⚔️ ${karte.power} • ✨ ${karte.ability}${selten ? " ✨ SELTENE KARTE!" : ""} ⏳ Nächste Karte: ${t.datumText} (in ${t.restText}).`;
+}
+
+async function fuchsTcgTimer(username) {
+  const u = normalisieren(username);
+  const s = await fuchsTcgLaden(u);
+  const naechsteOeffnung = Number(s.naechsteOeffnung || 0);
+  if (!naechsteOeffnung || naechsteOeffnung <= Date.now()) return `🃏 @${u} Du kannst jetzt eine Karte öffnen! Nutze !booster.`;
+  const t = fuchsTcgNaechsteZeit(naechsteOeffnung);
+  return `⏳ @${u} Deine nächste Fuchswelt-TCG-Karte kann am ${t.datumText} geöffnet werden. Noch ${t.restText}.`;
+}
+
+async function fuchsTcgAlbum(username) {
+  const u = normalisieren(username);
+  const s = await fuchsTcgLaden(u);
+  const gesammelt = Object.values(s.karten).reduce((a,b)=>a+Number(b||0),0);
+  const verschiedene = Object.keys(s.karten).length;
+  const fehlend = Math.max(0, FUCHS_TCG_KARTEN.length - verschiedene);
+  const seltenheiten = ["SECRET","LEGENDÄR","ULTRA","RARE","UNCOMMON","COMMON"].map(r => {
+    const anzahl = FUCHS_TCG_KARTEN.filter(k => k.rarity === r && s.karten[k.id]).length;
+    return `${FUCHS_TCG_RARITY[r].label} ${r}: ${anzahl}`;
+  }).join(" • ");
+  return `📖 @${u} TCG-Album: ${verschiedene}/${FUCHS_TCG_KARTEN.length} verschiedene Karten • ${gesammelt} Karten insgesamt • ${fehlend} fehlen noch. ${seltenheiten}`;
+}
+
+async function fuchsTcgKarteInfo(username, such) {
+  const u = normalisieren(username);
+  const q = String(such || "").trim().toLowerCase();
+  if (!q) return `🃏 @${u} Nutze !karte FW-001 oder !karte fuchsmissvegetalover2_0.`;
+  const karte = FUCHS_TCG_KARTEN.find(k => k.id.toLowerCase() === q || k.name.toLowerCase().includes(q));
+  if (!karte) return `🃏 @${u} Diese Karte gibt es nicht. Nutze !tcg für die Befehle.`;
+  const s = await fuchsTcgLaden(u);
+  const besitz = Number(s.karten[karte.id] || 0);
+  return `${karte.emoji} ${karte.id} ${karte.name} • ${FUCHS_TCG_RARITY[karte.rarity].label} ${karte.rarity} • ${karte.type} • ❤️ ${karte.hp} • ⚔️ ${karte.power} • ✨ ${karte.ability} • Besitz: ${besitz}x`;
+}
+
+async function fuchsTcgListe(username) {
+  const u = normalisieren(username);
+  const s = await fuchsTcgLaden(u);
+  const vorhanden = FUCHS_TCG_KARTEN.filter(k => s.karten[k.id]).slice(0,12).map(k => `${k.id} ${k.emoji}${Number(s.karten[k.id]) > 1 ? ` x${s.karten[k.id]}` : ""}`).join(" • ");
+  return vorhanden ? `🃏 @${u} Deine Sammlung: ${vorhanden}` : `🃏 @${u} Deine Sammlung ist noch leer. Öffne mit !booster deine erste Karte!`;
+}
+
+const FUCHS_TCG_HTML = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fuchswelt TCG</title><style>body{margin:0;background:#08090d;color:#fff;font-family:system-ui,-apple-system,sans-serif}main{max-width:900px;margin:auto;padding:16px}.panel{background:#121621;border:1px solid #303746;border-radius:18px;padding:14px;margin-bottom:14px}input,button{font:inherit;border-radius:12px;padding:12px;border:1px solid #303746}input{background:#090c12;color:#fff;width:100%;box-sizing:border-box}button{background:#1b2230;color:#fff;font-weight:800;width:100%;margin-top:8px}.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.card{padding:14px;border-radius:16px;border:1px solid #42495a;background:linear-gradient(145deg,#191e2a,#0c0f16);min-height:170px}.art{font-size:48px;text-align:center}.id{color:#9aa2b2;font-size:12px}.name{font-size:18px;font-weight:900}.rarity{margin-top:4px}.stats{margin-top:10px;font-size:13px}.timer{font-weight:900;margin-top:10px}@media(min-width:700px){.cards{grid-template-columns:repeat(4,1fr)}}</style></head><body><main><div class="panel"><h1>🃏 Fuchswelt TCG</h1><p>Pro Zuschauer genau <b>1 Karte alle 24 Stunden</b>.</p><input id="p" value="streamer" placeholder="Twitch-Name"><button onclick="openB()">🎁 Eine Karte öffnen</button><button onclick="load()">🔄 Sammlung aktualisieren</button><div id="msg"></div><div id="timer" class="timer"></div></div><div class="panel"><b id="count">Album</b><div id="cards" class="cards"></div></div></main><script>const p=()=>encodeURIComponent((document.getElementById('p').value||'streamer').trim().toLowerCase());let nextOpen=0;async function openB(){const r=await fetch('/tcg-open',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:decodeURIComponent(p())})});const d=await r.json();document.getElementById('msg').textContent=d.message;nextOpen=Number(d.nextOpenAt||0);renderTimer();load()}async function load(){const d=await (await fetch('/tcg-data?player='+p())).json();document.getElementById('count').textContent='📖 Album '+d.collected+'/'+d.total+' verschiedene Karten';document.getElementById('cards').innerHTML=d.cards.map(k=>'<div class="card"><div class="art">'+k.emoji+'</div><div class="id">'+k.id+' • '+k.rarity+'</div><div class="name">'+k.name+'</div><div class="rarity">'+k.type+'</div><div class="stats">❤️ '+k.hp+' • ⚔️ '+k.power+'<br>✨ '+k.ability+'<br>Besitz: '+k.count+'x</div></div>').join('');nextOpen=Number(d.nextOpenAt||0);renderTimer()}function renderTimer(){const el=document.getElementById('timer');if(!nextOpen||nextOpen<=Date.now()){el.textContent='🟢 Jetzt kann eine Karte geöffnet werden!';return}const r=Math.max(0,nextOpen-Date.now()),h=Math.floor(r/3600000),m=Math.floor(r%3600000/60000),s=Math.floor(r%60000/1000),d=new Date(nextOpen);el.textContent='⏳ Nächste Karte: '+d.toLocaleString('de-DE',{dateStyle:'short',timeStyle:'medium'})+' • noch '+h+' Std. '+m+' Min. '+s+' Sek.'}load();setInterval(renderTimer,1000)</script></body></html>`;
+
+
+
 /* =========================================================
    👁️ 03:17 – DIE WELT IST FALSCH
    Integriert in die bestehende Fuchswelt.
@@ -3695,7 +3901,8 @@ function hilfe() {
     `!team !teamgründen !teameinladen ` +
     `!teambeitreten !teamverlassen !teamaufgaben ` +
     `!event !eventmitmachen !eventstatus ` +
-    `!ruhmeshalle !legenden !fuchskern`
+    `!ruhmeshalle !legenden !fuchskern ` +
+    `!tcg !booster !album !karten !karte`
   );
 }
 
@@ -4771,6 +4978,28 @@ async function chatVerarbeiten(
     }
 
 
+    /* 🃏 FUCHSWELT TCG */
+
+    else if (/^!tcg$/i.test(text.trim())) {
+      antwort = `🃏 Fuchswelt TCG: !booster öffnet genau 1 Karte alle 24 Stunden • !tcgtimer zeigt die nächste Öffnungszeit • !album zeigt dein Album • !karten zeigt deine Sammlung • !karte FW-001 zeigt eine Karte.`;
+    }
+
+    else if (/^!booster$/i.test(text.trim())) {
+      antwort = await fuchsTcgBooster(username);
+    }
+
+    else if (/^!tcgtimer$/i.test(text.trim())) {
+      antwort = await fuchsTcgTimer(username);
+    }
+
+    else if (/^!(album|karten)$/i.test(text.trim())) {
+      antwort = text.trim().toLowerCase() === "!album" ? await fuchsTcgAlbum(username) : await fuchsTcgListe(username);
+    }
+
+    else if (/^!karte(?:\s+.+)?$/i.test(text.trim())) {
+      antwort = await fuchsTcgKarteInfo(username, text.trim().replace(/^!karte\s*/i, ""));
+    }
+
     else if (d0317AntwortText) {
 
       antwort =
@@ -4857,6 +5086,32 @@ const server =
             req.url,
             "http://localhost"
           );
+
+        if (reqUrl.pathname === "/tcg" && req.method === "GET") {
+          res.writeHead(200, {"Content-Type":"text/html; charset=utf-8", "Cache-Control":"no-store"});
+          res.end(FUCHS_TCG_HTML);
+          return;
+        }
+
+        if (reqUrl.pathname === "/tcg-data" && req.method === "GET") {
+          const player = normalisieren(reqUrl.searchParams.get("player") || "streamer");
+          const s = await fuchsTcgLaden(player);
+          const cards = FUCHS_TCG_KARTEN.map(k => ({...k, count:Number(s.karten[k.id] || 0)})).filter(k => k.count > 0);
+          res.writeHead(200, {"Content-Type":"application/json; charset=utf-8", "Cache-Control":"no-store"});
+          res.end(JSON.stringify({player, collected:cards.length, total:FUCHS_TCG_KARTEN.length, nextOpenAt:Number(s.naechsteOeffnung || 0), cards}));
+          return;
+        }
+
+        if (reqUrl.pathname === "/tcg-open" && req.method === "POST") {
+          const body = await d0317Body(req);
+          const player = normalisieren(body.player || "streamer");
+          const message = await fuchsTcgBooster(player);
+          const s = await fuchsTcgLaden(player);
+          const cards = FUCHS_TCG_KARTEN.map(k => ({...k, count:Number(s.karten[k.id] || 0)})).filter(k => k.count > 0);
+          res.writeHead(200, {"Content-Type":"application/json; charset=utf-8", "Cache-Control":"no-store"});
+          res.end(JSON.stringify({message, player, collected:cards.length, total:FUCHS_TCG_KARTEN.length, nextOpenAt:Number(s.naechsteOeffnung || 0), cards}));
+          return;
+        }
 
         if (
           reqUrl.pathname === "/0317"
