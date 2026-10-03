@@ -1347,6 +1347,16 @@ async function profil(
   const p =
     await profilDB(username);
 
+  /*
+     🐾 Gespeichertes Rudel aus Supabase laden
+  */
+
+  if (p?.Rudel) {
+
+    w.rudel =
+      p.Rudel;
+  }
+
   const xp =
     Number(p?.xp || 0);
 
@@ -3128,7 +3138,7 @@ function pokemonWahl(
    🐾 RUDELWAHL
 ========================================================= */
 
-function rudelWahl(
+async function rudelWahl(
   username,
   name
 ) {
@@ -3154,8 +3164,61 @@ function rudelWahl(
     );
   }
 
+  /*
+     🐾 PROFIL IN SUPABASE SICHERSTELLEN
+     0 XP verändert den XP-Stand nicht.
+  */
+
+  await xpHinzufuegen(
+    username,
+    0
+  );
+
+  /*
+     🐾 RUDEL LOKAL SETZEN
+  */
+
   w.rudel =
     rudel[schluessel];
+
+  /*
+     🐾 RUDEL DAUERHAFT IN SUPABASE SPEICHERN
+  */
+
+  try {
+
+    await supabase(
+      `/rest/v1/fuchsprofile?spieler=eq.${encodeURIComponent(
+        normalisieren(username)
+      )}`,
+      {
+        method: "PATCH",
+
+        headers: {
+          "Prefer":
+            "return=minimal"
+        },
+
+        body:
+          JSON.stringify({
+            Rudel:
+              rudel[schluessel]
+          })
+      }
+    );
+
+  } catch (error) {
+
+    console.error(
+      "❌ Rudel speichern:",
+      error.message
+    );
+
+    return (
+      `❌ @${username} Das Rudel konnte ` +
+      `nicht gespeichert werden.`
+    );
+  }
 
   chronikEintrag(
     w,
@@ -3165,7 +3228,8 @@ function rudelWahl(
   return (
     `🌟 @${username} Du bist jetzt im ` +
     `${rudel[schluessel]}! ` +
-    `Dein Gebiet: ${gebiete[schluessel]}.`
+    `Dein Gebiet: ${gebiete[schluessel]}. ` +
+    `💾 Dauerhaft gespeichert.`
   );
 }
 
@@ -4877,16 +4941,51 @@ async function chatVerarbeiten(
     /* !RUDEL */
 
     else if (
-      /^!rudel$/i.test(
-        text.trim()
-      )
+      /^!rudel(?:\s+(.+))?$/i.test(text)
     ) {
 
-      antwort =
-        `🐾 @${username} ${
-          w.rudel ||
-          "Noch kein Rudel"
-        }`;
+      match =
+        text.match(
+          /^!rudel(?:\s+(.+))?$/i
+        );
+
+      /*
+         🐾 !rudel ice
+         🐾 !rudel feuer
+         🐾 !rudel wasser
+         🐾 !rudel wald
+      */
+
+      if (match?.[1]) {
+
+        antwort =
+          await rudelWahl(
+            username,
+            match[1]
+          );
+
+      } else {
+
+        /*
+           🐾 Nur !rudel:
+           Gespeichertes Rudel aus Supabase laden
+        */
+
+        const p =
+          await profilDB(username);
+
+        if (p?.Rudel) {
+
+          w.rudel =
+            p.Rudel;
+        }
+
+        antwort =
+          `🐾 @${username} ${
+            w.rudel ||
+            "Noch kein Rudel"
+          }`;
+      }
     }
 
 
@@ -4902,7 +5001,7 @@ async function chatVerarbeiten(
         );
 
       antwort =
-        rudelWahl(
+        await rudelWahl(
           username,
           match[1]
         );
